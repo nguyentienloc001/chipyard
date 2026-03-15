@@ -1,22 +1,17 @@
 package chipyard.fpga.vc707
 
 import sys.process._
-
-import org.chipsalliance.cde.config.{Config, Parameters}
-import freechips.rocketchip.subsystem.{SystemBusKey, PeripheryBusKey, ControlBusKey, ExtMem}
+import org.chipsalliance.cde.config.{Config, Field, Parameters}
+import freechips.rocketchip.subsystem.{ControlBusKey, ExtMem, PeripheryBusKey, SystemBusKey}
 import freechips.rocketchip.devices.debug.{DebugModuleKey, ExportDebug, JTAG}
-import freechips.rocketchip.devices.tilelink.{DevNullParams, BootROMLocated}
-import freechips.rocketchip.diplomacy.{RegionType, AddressSet}
+import freechips.rocketchip.devices.tilelink.{BootROMLocated, DevNullParams}
+import freechips.rocketchip.diplomacy.{AddressSet, RegionType}
 import freechips.rocketchip.resources.{DTSModel, DTSTimebase}
-
 import sifive.blocks.devices.spi.{PeripherySPIKey, SPIParams}
 import sifive.blocks.devices.uart.{PeripheryUARTKey, UARTParams}
-
-import sifive.fpgashells.shell.{DesignKey}
-import sifive.fpgashells.shell.xilinx.{VC7074GDDRSize}
-
-import testchipip.serdes.{SerialTLKey}
-
+import sifive.fpgashells.shell.DesignKey
+import sifive.fpgashells.shell.xilinx.VC7074GDDRSize
+import testchipip.serdes.SerialTLKey
 import chipyard.{BuildSystem, ExtTLMem}
 import chipyard.harness._
 
@@ -41,42 +36,72 @@ class WithSystemModifications extends Config((site, here, up) => {
 class WithVC707Tweaks extends Config (
   // clocking
   new chipyard.harness.WithAllClocksFromHarnessClockInstantiator ++
-  new chipyard.clocking.WithPassthroughClockGenerator ++
-  new chipyard.config.WithUniformBusFrequencies(50.0) ++
+    new chipyard.clocking.WithPassthroughClockGenerator ++
+    new chipyard.config.WithUniformBusFrequencies(50.0) ++
 
-  new chipyard.harness.WithHarnessBinderClockFreqMHz(50) ++
-  new WithFPGAFrequency(50) ++ // default 50MHz freq
-  // harness binders
-  new chipyard.harness.WithAllClocksFromHarnessClockInstantiator ++
-  new WithVC707UARTHarnessBinder ++
-  new WithVC707SPISDCardHarnessBinder ++
-  new WithVC707DDRMemHarnessBinder ++
-  // other configuration
-  new WithDefaultPeripherals ++
-  new chipyard.config.WithTLBackingMemory ++ // use TL backing memory
-  new WithSystemModifications ++ // setup busses, use sdboot bootrom, setup ext. mem. size
-  new chipyard.config.WithNoDebug ++ // remove debug module
-  new freechips.rocketchip.subsystem.WithoutTLMonitors ++
-  new freechips.rocketchip.subsystem.WithNMemoryChannels(1)
+    new chipyard.harness.WithHarnessBinderClockFreqMHz(50) ++
+    new WithFPGAFrequency(50) ++ // default 50MHz freq
+    // harness binders
+    new chipyard.harness.WithAllClocksFromHarnessClockInstantiator ++
+    //  new WithVC707JTAGHarnessBinder ++
+    new WithVC707UARTHarnessBinder ++
+    new WithVC707SPISDCardHarnessBinder ++
+    new WithVC707DDRMemHarnessBinder ++
+    // other configuration
+    new WithDefaultPeripherals ++
+    new chipyard.config.WithTLBackingMemory ++ // use TL backing memory
+    new WithSystemModifications ++ // setup busses, use sdboot bootrom, setup ext. mem. size
+    new chipyard.config.WithNoDebug ++ // remove debug module
+    new freechips.rocketchip.subsystem.WithoutTLMonitors ++
+    new freechips.rocketchip.subsystem.WithNMemoryChannels(1)
 )
 
 class RocketVC707Config extends Config (
   new WithVC707Tweaks ++
-  new chipyard.RocketConfig
+    new chipyard.RocketConfig
+)
+
+class CustomVC707Config extends Config (
+  new WithVC707Tweaks ++
+  new chipyard.QuadCoreRing
+)
+
+class TestVC707Config extends Config (
+  new WithVC707Tweaks ++
+  new chipyard.GCDTLBlackBoxRocketConfig
+)
+
+class InternshipConfig extends Config (
+  new WithVC707Tweaks ++
+  new chipyard.cipher.WithMyTimer(address = 0x00007000) ++
+  new chipyard.cipher.WithKLEIN(address = 0x00006000) ++
+  new chipyard.config.WithBroadcastManager ++
+  new testchipip.soc.WithNoScratchpads ++
+  new freechips.rocketchip.rocket.WithNSmallCores(1) ++
+  new chipyard.config.AbstractConfig
+)
+
+class QuadCoreVC707Config extends Config (
+  new WithVC707Tweaks ++
+  new testchipip.soc.WithNoScratchpads ++
+  new freechips.rocketchip.rocket.WithNCustomCores(1, withFPU = false) ++
+  new freechips.rocketchip.rocket.WithNCustomCores(2, withFPU = true, lengthFPU = 32) ++
+  new freechips.rocketchip.rocket.WithNCustomCores(1, withFPU = true, lengthFPU = 64) ++
+  new chipyard.config.AbstractConfig
 )
 
 class BoomVC707Config extends Config (
   new WithFPGAFrequency(50) ++
-  new WithVC707Tweaks ++
-  new chipyard.MegaBoomV3Config
+    new WithVC707Tweaks ++
+    new chipyard.MediumBoomV3Config
 )
 
 class WithFPGAFrequency(fMHz: Double) extends Config (
   new chipyard.config.WithPeripheryBusFrequency(fMHz) ++
-  new chipyard.config.WithMemoryBusFrequency(fMHz) ++
-  new chipyard.config.WithSystemBusFrequency(fMHz) ++
-  new chipyard.config.WithControlBusFrequency(fMHz) ++
-  new chipyard.config.WithFrontBusFrequency(fMHz)
+    new chipyard.config.WithMemoryBusFrequency(fMHz) ++
+    new chipyard.config.WithSystemBusFrequency(fMHz) ++
+    new chipyard.config.WithControlBusFrequency(fMHz) ++
+    new chipyard.config.WithFrontBusFrequency(fMHz)
 )
 
 class WithFPGAFreq25MHz extends WithFPGAFrequency(25)

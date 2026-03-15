@@ -154,3 +154,6 @@
 [submodule "generators/vexiiriscv"]
 	path = generators/vexiiriscv
 	url = https://github.com/ucb-bar/vexiiriscv-tile.git
+[submodule "toolchains/riscv-tools/riscv-gnu-toolchain"]
+	path = toolchains/riscv-tools/riscv-gnu-toolchain
+	url = https://github.com/riscv-collab/riscv-gnu-toolchain

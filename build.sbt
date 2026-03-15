@@ -408,3 +408,7 @@ lazy val firechip = (project in file("generators/firechip/chip"))
     Test / testOptions += Tests.Argument("-oF")
   )
   .settings(scalaTestSettings)
+
+lazy val demoriscv = (project in file("./demoriscv"))
+  .dependsOn(chipyard, fpga_shells)
+  .settings(commonSettings)

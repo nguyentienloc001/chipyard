@@ -32,6 +32,18 @@ class DigitalTop(implicit p: Parameters) extends ChipyardSystem
   with icenet.CanHavePeripheryIceNIC // Enables optionally adding the IceNIC for FireSim
   with chipyard.example.CanHavePeripheryInitZero // Enables optionally adding the initzero example widget
   with chipyard.example.CanHavePeripheryGCD // Enables optionally adding the GCD example widget
+  //with chipyard.cipher.CanHavePeripheryROM
+  with chipyard.cipher.CanHavePeripheryKLEIN // Enables KLEIN accelerator
+  with chipyard.cipher.CanHavePeripheryBLAKE2S // Enables BLAKE2S accelerator
+  with chipyard.cipher.CanHavePeripheryChaCha // Enables ChaCha accelerator
+  with chipyard.cipher.CanHavePeripheryPrince // Enable Prince accelerator
+  with chipyard.cipher.CanHavePeripheryPresent // Enable Present accelerator
+  with chipyard.cipher.CanHavePeripheryDMPresent // Enable DMPresent accelerator
+  with chipyard.cipher.CanHavePeripheralSHA3
+  with chipyard.cipher.CanHavePeripheralAES
+  with chipyard.cipher.CanHavePeripheralASCON
+  with chipyard.cipher.CanHavePeripheralPOLY1305
+  with chipyard.cipher.CanHavePeripheryMyTimer // Enable MyTimer accelerator
   with chipyard.example.CanHavePeripheryStreamingFIR // Enables optionally adding the DSPTools FIR example widget
   with chipyard.example.CanHavePeripheryStreamingPassthrough // Enables optionally adding the DSPTools streaming-passthrough example widget
   with nvidia.blocks.dla.CanHavePeripheryNVDLA // Enables optionally having an NVDLA

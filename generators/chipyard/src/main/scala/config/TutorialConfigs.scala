@@ -27,7 +27,7 @@ class TutorialStarterConfig extends Config(
   // CUSTOMIZE THE CORE
   // Uncomment out one (or multiple) of the lines below, and choose
   // how many cores you want.
-  // new freechips.rocketchip.rocket.WithNHugeCores(1) ++    // Specify we want some number of Rocket cores
+  new freechips.rocketchip.rocket.WithNMedCores(1) ++    // Specify we want some number of Rocket cores
   // new boom.v3.common.WithNSmallBooms(1) ++                     // Specify we want some number of BOOM cores
 
   // CUSTOMIZE the L2
@@ -42,7 +42,7 @@ class TutorialMMIOConfig extends Config(
 
   // Attach either a TileLink or AXI4 version of GCD
   // Uncomment one of the below lines
-  // new chipyard.example.WithGCD(useAXI4=false) ++ // Use TileLink version
+  new chipyard.example.WithGCD(useAXI4=false) ++ // Use TileLink version
   // new chipyard.example.WithGCD(useAXI4=true) ++  // Use AXI4 version
 
   // For this demonstration we assume the base system is a single-core Rocket, for fast elaboration

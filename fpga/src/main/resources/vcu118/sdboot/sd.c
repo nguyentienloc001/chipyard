@@ -16,7 +16,7 @@
 #define PAYLOAD_SIZE (PAYLOAD_SIZE_B / SECTOR_SIZE_B)
 
 // The sector at which the BBL partition starts
-#define BBL_PARTITION_START_SECTOR 34
+#define BBL_PARTITION_START_SECTOR 2048
 
 #ifndef TL_CLK
 #error Must define TL_CLK

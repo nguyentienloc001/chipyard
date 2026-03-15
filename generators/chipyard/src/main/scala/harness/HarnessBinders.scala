@@ -75,6 +75,18 @@ class WithSimSPIFlashModel(rdOnly: Boolean = true) extends HarnessBinder({
   }
 })
 
+class WithSPITiedOff extends HarnessBinder({
+  case (th: HasHarnessInstantiators, port: SPIPort, chipId: Int) => {
+    port.io <> DontCare
+  }
+})
+
+class WithI2CTiedOff extends HarnessBinder({
+  case (th: HasHarnessInstantiators, port: I2CPort, chipId: Int) => {
+    port.io <> DontCare
+  }
+})
+
 class WithSimBlockDevice extends HarnessBinder({
   case (th: HasHarnessInstantiators, port: BlockDevicePort, chipId: Int) => {
     val sim_blkdev = Module(new SimBlockDevice(port.params))

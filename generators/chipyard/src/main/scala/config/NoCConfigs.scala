@@ -101,6 +101,7 @@ class MultiNoCConfig extends Config(
       channelParamGen = (a, b) => UserChannelParams(Seq.fill(8) { UserVirtualChannelParams(4) }),
       routingRelation = BlockingVirtualSubnetworksRouting(TerminalRouterRouting(Mesh2DEscapeRouting()), 5, 1))
   )) ++
+  new freechips.rocketchip.subsystem.WithoutTLMonitors ++
   new freechips.rocketchip.rocket.WithNHugeCores(8) ++
   new freechips.rocketchip.subsystem.WithNBanks(4) ++
   new freechips.rocketchip.subsystem.WithNMemoryChannels(4) ++
@@ -175,7 +176,7 @@ class SharedNoCConfig extends Config(
       inNodeMapping = ListMap(
         "serial_tl" -> 9, "Core 0" -> 2,
         "Core 1" -> 10, "Core 2" -> 11, "Core 3" -> 13, "Core 4" -> 14,
-        "Core 5" -> 15, "Core 6" -> 16, "Core 7" -> 18, "Core 8" -> 19),
+        "Core 5" -> 15, "Core 6" -> 16, "Core 7" -> 18, "Core 8" -> 19), // Core 8 doesn't exist, so the generator ignores the specified mapping for "Core 8".
       outNodeMapping = ListMap(
         "system[0]" -> 0, "system[1]" -> 2, "system[2]" -> 8, "system[3]" -> 6,
         "pbus" -> 4))

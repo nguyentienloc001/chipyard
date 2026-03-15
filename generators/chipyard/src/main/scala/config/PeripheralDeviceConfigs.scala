@@ -21,7 +21,7 @@ class SmallSPIFlashRocketConfig extends Config(
 
 class SimBlockDeviceRocketConfig extends Config(
   new chipyard.harness.WithSimBlockDevice ++                // drive block-device IOs with SimBlockDevice
-  new testchipip.iceblk.WithBlockDevice ++                  // add block-device module to peripherybus
+  new testchipip.iceblk.WithBlockDevice ++                  // add block-device module to periphery bus
   new freechips.rocketchip.rocket.WithNHugeCores(1) ++
   new chipyard.config.AbstractConfig)
 
