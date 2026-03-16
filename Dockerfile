@@ -1,5 +1,5 @@
 ##############################################################################
-# Chipyard Docker Image
+# Chipyard Docker Image — Optimized Multi-Stage Build
 #
 # Workflow: generation (Chisel/FIRRTL) → firtool → Verilator sim → compile
 #
@@ -15,62 +15,54 @@
 #   cd sims/verilator && make CONFIG=RocketConfig
 ##############################################################################
 
-FROM --platform=linux/amd64 ubuntu:22.04 AS base
+# ═══════════════════════════════════════════════════════════════════════════
+# Stage 1: Builder — heavy build tools, compile everything, then discard
+# ═══════════════════════════════════════════════════════════════════════════
+FROM --platform=linux/amd64 ubuntu:22.04 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"]
 
-# ── 1. System dependencies ──────────────────────────────────────────────────
+# All build + runtime deps together (this stage is thrown away)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    gcc g++ \
+    build-essential gcc g++ \
     autoconf automake autotools-dev libtool \
     curl wget ca-certificates gnupg \
     git \
-    python3 python3-pip \
+    python3 \
     device-tree-compiler \
     libmpc-dev libmpfr-dev libgmp-dev \
     gawk bison flex texinfo gperf \
     bc unzip \
     pkg-config libexpat1-dev zlib1g-dev libfl-dev \
     help2man perl make \
-    default-jdk \
-    jq \
     xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
-# ── 2. sbt (Scala Build Tool) ───────────────────────────────────────────────
-RUN echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" > /etc/apt/sources.list.d/sbt.list && \
-    curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" | apt-key add - && \
-    apt-get update && apt-get install -y --no-install-recommends sbt && \
-    rm -rf /var/lib/apt/lists/*
-
-# ── 3. Verilator 5.022 (build from source — exact version required) ─────────
+# ── 1. Verilator 5.022 ───────────────────────────────────────────────────
 ARG VERILATOR_VERSION=5.022
 RUN cd /tmp && \
     curl -fsSL "https://github.com/verilator/verilator/archive/refs/tags/v${VERILATOR_VERSION}.tar.gz" \
         | tar xz && \
     cd verilator-${VERILATOR_VERSION} && \
     autoconf && \
-    ./configure --prefix=/usr/local && \
+    ./configure --prefix=/opt/verilator && \
     make -j$(nproc) && \
     make install && \
-    cd / && rm -rf /tmp/verilator-*
+    rm -rf /tmp/verilator-*
 
-# ── 4. firtool / CIRCT (prebuilt shared binary, native x86_64) ──────────────
+# ── 2. firtool / CIRCT — extract only firtool binary ─────────────────────
 ARG FIRTOOL_VERSION=1.75.0
 RUN cd /tmp && \
     curl -fsSL "https://github.com/llvm/circt/releases/download/firtool-${FIRTOOL_VERSION}/circt-full-shared-linux-x64.tar.gz" \
         -o circt.tar.gz && \
     mkdir circt-extract && tar xzf circt.tar.gz -C circt-extract --strip-components=1 && \
-    cp -a circt-extract/bin/* /usr/local/bin/ && \
-    cp -a circt-extract/lib/* /usr/local/lib/ 2>/dev/null || true && \
-    ldconfig && \
-    rm -rf /tmp/circt* && \
-    firtool --version
+    mkdir -p /opt/firtool/bin /opt/firtool/lib && \
+    cp circt-extract/bin/firtool /opt/firtool/bin/ && \
+    cp -a circt-extract/lib/*.so* /opt/firtool/lib/ 2>/dev/null || true && \
+    rm -rf /tmp/circt*
 
-# ── 5. RISC-V bare-metal toolchain (pre-built from riscv-collab) ────────────
-# Complete toolchain with newlib, needed for pk/tests/libgloss builds
+# ── 3. RISC-V toolchain (pre-built) ──────────────────────────────────────
 ENV RISCV=/opt/riscv
 ARG RISCV_TOOLCHAIN_TAG=2026.03.13
 RUN mkdir -p $RISCV && \
@@ -79,20 +71,21 @@ RUN mkdir -p $RISCV && \
         -o riscv-toolchain.tar.xz && \
     tar xJf riscv-toolchain.tar.xz -C $RISCV --strip-components=1 && \
     rm -f /tmp/riscv-toolchain.tar.xz && \
-    $RISCV/bin/riscv64-unknown-elf-gcc --version | head -1
+    # Strip debug symbols from toolchain (saves ~500MB+)
+    find $RISCV/bin -type f -executable -exec strip --strip-debug {} + 2>/dev/null || true && \
+    find $RISCV/libexec -type f -executable -exec strip --strip-debug {} + 2>/dev/null || true && \
+    find $RISCV/lib/gcc -name "*.a" -exec strip --strip-debug {} + 2>/dev/null || true && \
+    # Remove docs, man pages, info
+    rm -rf $RISCV/share/doc $RISCV/share/man $RISCV/share/info $RISCV/share/locale
 
 ENV PATH="$RISCV/bin:$PATH"
 
-# ── 6. Build Spike (riscv-isa-sim) → provides libriscv, libfesvr, spike ─────
-FROM base AS spike-builder
-
-ENV RISCV=/opt/riscv
-ENV PATH="$RISCV/bin:$PATH"
-
+# ── 4. Build Spike (riscv-isa-sim) ───────────────────────────────────────
 ARG SPIKE_COMMIT=824ecdf6dc06ad0560001741ef1db861d4ed069f
 RUN cd /tmp && \
-    git clone https://github.com/riscv-software-src/riscv-isa-sim.git && \
+    git clone --depth 1 https://github.com/riscv-software-src/riscv-isa-sim.git && \
     cd riscv-isa-sim && \
+    git fetch --depth 1 origin $SPIKE_COMMIT && \
     git checkout $SPIKE_COMMIT && \
     mkdir build && cd build && \
     ../configure --prefix=$RISCV \
@@ -103,11 +96,12 @@ RUN cd /tmp && \
     cp libfesvr.a $RISCV/lib/ && \
     cd / && rm -rf /tmp/riscv-isa-sim
 
-# ── 7. Build RISC-V proxy kernel (pk) ───────────────────────────────────────
+# ── 5. Build RISC-V proxy kernel (pk) ────────────────────────────────────
 ARG PK_COMMIT=abadfdc507d5a75b6272dc360e70a80a510c758a
 RUN cd /tmp && \
-    git clone https://github.com/riscv-software-src/riscv-pk.git && \
+    git clone --depth 1 https://github.com/riscv-software-src/riscv-pk.git && \
     cd riscv-pk && \
+    git fetch --depth 1 origin $PK_COMMIT && \
     git checkout $PK_COMMIT && \
     mkdir build && cd build && \
     ../configure --prefix=$RISCV --host=riscv64-unknown-elf --with-arch=rv64gc_zifencei && \
@@ -115,11 +109,12 @@ RUN cd /tmp && \
     make install && \
     cd / && rm -rf /tmp/riscv-pk
 
-# ── 8. Build riscv-tests ────────────────────────────────────────────────────
+# ── 6. Build riscv-tests ─────────────────────────────────────────────────
 ARG TESTS_COMMIT=51de00886cd28a3cf9b85ee306fb2b5ee5ab550e
 RUN cd /tmp && \
-    git clone https://github.com/riscv-software-src/riscv-tests.git && \
+    git clone --depth 1 https://github.com/riscv-software-src/riscv-tests.git && \
     cd riscv-tests && \
+    git fetch --depth 1 origin $TESTS_COMMIT && \
     git checkout $TESTS_COMMIT && \
     git submodule update --init --recursive && \
     autoconf && \
@@ -129,29 +124,68 @@ RUN cd /tmp && \
     (make install || true) && \
     cd / && rm -rf /tmp/riscv-tests
 
-# ── 9. Build DRAMSim2 shared library ────────────────────────────────────────
+# ── 7. Build DRAMSim2 shared library ─────────────────────────────────────
 RUN cd /tmp && \
-    git clone https://github.com/dramninjasUMD/DRAMSim2.git && \
+    git clone --depth 1 https://github.com/dramninjasUMD/DRAMSim2.git && \
     cd DRAMSim2 && \
     make libdramsim.so && \
     cp libdramsim.so $RISCV/lib/ && \
     cd / && rm -rf /tmp/DRAMSim2
 
-# ── 10. Final image ─────────────────────────────────────────────────────────
-FROM base AS final
+# Final cleanup in builder: strip built binaries
+RUN strip --strip-debug $RISCV/bin/spike 2>/dev/null || true && \
+    strip --strip-debug $RISCV/lib/libriscv.so 2>/dev/null || true && \
+    strip --strip-debug $RISCV/lib/libdramsim.so 2>/dev/null || true && \
+    find $RISCV/lib -name "*.a" -exec strip --strip-debug {} + 2>/dev/null || true
 
+# ═══════════════════════════════════════════════════════════════════════════
+# Stage 2: Final — minimal runtime image, no build tools
+# ═══════════════════════════════════════════════════════════════════════════
+FROM --platform=linux/amd64 ubuntu:22.04 AS final
+
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-c"]
+
+# Only runtime dependencies — no autoconf, texinfo, gperf, help2man, etc.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc g++ \
+    curl ca-certificates gnupg \
+    git \
+    python3 python3-pip \
+    device-tree-compiler \
+    libmpc-dev libmpfr-dev libgmp-dev \
+    zlib1g-dev libfl-dev libexpat1-dev \
+    pkg-config \
+    perl make \
+    default-jdk \
+    jq \
+    && rm -rf /var/lib/apt/lists/*
+
+# sbt
+RUN echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" > /etc/apt/sources.list.d/sbt.list && \
+    curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" | apt-key add - && \
+    apt-get update && apt-get install -y --no-install-recommends sbt && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy only what we need from builder (single layer, no duplication)
 ENV RISCV=/opt/riscv
-ENV PATH="$RISCV/bin:/usr/local/bin:$PATH"
+COPY --from=builder /opt/riscv /opt/riscv
+COPY --from=builder /opt/verilator /opt/verilator
+COPY --from=builder /opt/firtool /opt/firtool
 
-# Copy all built RISC-V tools from builder stage (spike, pk, tests, dramsim)
-COPY --from=spike-builder /opt/riscv /opt/riscv
+ENV PATH="$RISCV/bin:/opt/verilator/bin:/opt/firtool/bin:/usr/local/bin:$PATH"
+ENV LD_LIBRARY_PATH="$RISCV/lib:/opt/firtool/lib"
 
-# ── 11. Environment setup script ────────────────────────────────────────────
+# Verify tools
+RUN firtool --version && verilator --version && spike --help 2>&1 | head -1
+
+# Environment setup script
 RUN printf '%s\n' \
     '#!/bin/bash' \
     'export RISCV=/opt/riscv' \
-    'export PATH=$RISCV/bin:/usr/local/bin:$PATH' \
-    'export LD_LIBRARY_PATH=$RISCV/lib:/usr/local/lib:${LD_LIBRARY_PATH:-}' \
+    'export PATH=$RISCV/bin:/opt/verilator/bin:/opt/firtool/bin:/usr/local/bin:$PATH' \
+    'export LD_LIBRARY_PATH=$RISCV/lib:/opt/firtool/lib:${LD_LIBRARY_PATH:-}' \
     'export JAVA_HEAP_SIZE=${JAVA_HEAP_SIZE:-8G}' \
     'export JAVA_TOOL_OPTIONS="-Xmx${JAVA_HEAP_SIZE} -Xss8M -Djava.io.tmpdir=/tmp"' \
     'export USE_CHISEL6=1' \

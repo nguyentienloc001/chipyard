@@ -13,8 +13,15 @@ OBJDUMP := $(RISCV)/bin/riscv64-unknown-elf-objdump
 CFLAGS := -march=rv64gc -mabi=lp64d -O0 -std=gnu11 -Wall -fno-common -g
 CFLAGS += -mcmodel=medany -I$(ROOT_DIR)/include -I.c
 
-# Using linker and startup file in libgloss
-SPECS_FLAGS := --specs=htif_nano.specs
+# Bypass libc_nano (compiled without -mcmodel=medany, breaks at 0x80000000).
+# Link directly against libgloss_htif + libgcc using the htif linker script.
+# crt_stubs.c provides __libc_init_array/atexit/exit/memset without libc.
+LIBGLOSS_BUILD := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))../../../toolchains/libgloss/build
+SPECS_FLAGS := -nostdlib -nostartfiles -static \
+               -L$(RISCV)/riscv64-unknown-elf/lib \
+               -T$(RISCV)/riscv64-unknown-elf/lib/htif.ld \
+               $(LIBGLOSS_BUILD)/misc/crt0.o \
+               -lgloss_htif -lgcc
 
 # Clock option passed in
 PBUS_CLK ?= 1000000
