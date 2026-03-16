@@ -1,0 +1,16 @@
+services:
+  chipyard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    platform: linux/amd64
+    image: chipyard:latest
+    container_name: chipyard
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    environment:
+      - RISCV=/opt/riscv
+      - JAVA_HEAP_SIZE=8G

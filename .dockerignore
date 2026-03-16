@@ -1,0 +1,34 @@
+# Ignore build outputs
+sims/verilator/generated-src
+sims/verilator/simulator-*
+sims/verilator/output
+sims/vcs/generated-src
+sims/vcs/simulator-*
+sims/vcs/output
+
+# Ignore large submodules not needed for Docker build
+sims/firesim
+software/firemarshal
+software/nvdla-workload
+software/spec2017
+
+# Ignore conda environments
+.conda-env
+.conda-lock-env
+
+# Ignore caches
+.classpath_cache
+.java_tmp
+.ivy2
+.sbt
+
+# Ignore git internals (but keep .gitmodules)
+.git
+
+# Ignore logs
+*.log
+
+# Ignore IDE files
+.idea
+.vscode
+*.swp
