@@ -45,8 +45,8 @@ jobs:
         program: [Cipher, MatMul, MTHello]
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
+      - name: Init toolchain submodules
+        run: git submodule update --init --depth=1 toolchains/libgloss
       - name: Build ${{ matrix.program }}
         run: |
           source /opt/chipyard-env.sh
@@ -67,8 +67,25 @@ jobs:
       image: locnguyen96/chipyard-dev:latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
+      - name: Init required submodules
+        run: |
+          git submodule update --init --depth=1 \
+            generators/rocket-chip \
+            generators/hardfloat \
+            generators/diplomacy \
+            generators/testchipip \
+            generators/constellation \
+            generators/rocket-chip-blocks \
+            generators/rocket-chip-inclusive-cache \
+            generators/shuttle \
+            generators/rocc-acc-utils \
+            tools/cde \
+            tools/dsptools \
+            tools/rocket-dsp-utils \
+            tools/fixedpoint \
+            tools/firrtl2 \
+            tools/circt \
+            tools/install-circt
       - name: Generate Verilog
         run: |
           source /opt/chipyard-env.sh
@@ -87,8 +104,25 @@ jobs:
       image: locnguyen96/chipyard-dev:latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
+      - name: Init required submodules
+        run: |
+          git submodule update --init --depth=1 \
+            generators/rocket-chip \
+            generators/hardfloat \
+            generators/diplomacy \
+            generators/testchipip \
+            generators/constellation \
+            generators/rocket-chip-blocks \
+            generators/rocket-chip-inclusive-cache \
+            generators/shuttle \
+            generators/rocc-acc-utils \
+            tools/cde \
+            tools/dsptools \
+            tools/rocket-dsp-utils \
+            tools/fixedpoint \
+            tools/firrtl2 \
+            tools/circt \
+            tools/install-circt
       - uses: actions/download-artifact@v4
         with:
           name: hw-verilog-${{ github.sha }}
@@ -118,8 +152,6 @@ jobs:
         program: [Cipher, MatMul, MTHello]
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
       - uses: actions/download-artifact@v4
         with:
           name: simulator-${{ github.sha }}
