@@ -158,8 +158,17 @@ jobs:
           chmod +x sims/verilator/simulator-*
           SIMULATOR=$(ls sims/verilator/simulator-* | head -1)
           BINARY=$(ls demoriscv/software/${{ matrix.program }}/build/*.elf | head -1)
+          set +e
           $SIMULATOR $BINARY 2>&1 | tee sim-${{ matrix.program }}.log
+          SIM_EXIT=$?
+          echo "Simulation exited with code $SIM_EXIT"
+          # Check if simulation produced output (ran successfully even if program returned non-zero)
+          if [ ! -s sim-${{ matrix.program }}.log ]; then
+            echo "ERROR: No simulation output produced"
+            exit 1
+          fi
       - uses: actions/upload-artifact@v5
+        if: always()
         with:
           name: sim-results-${{ matrix.program }}-${{ github.sha }}
           path: sim-${{ matrix.program }}.log
