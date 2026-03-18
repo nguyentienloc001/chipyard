@@ -40,6 +40,9 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: locnguyen96/chipyard-dev:latest
+    defaults:
+      run:
+        shell: bash
     strategy:
       matrix:
         program: [Cipher, MatMul, MTHello]
@@ -67,6 +70,9 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: locnguyen96/chipyard-dev:latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Fix git ownership
@@ -106,6 +112,9 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: locnguyen96/chipyard-dev:latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Fix git ownership
@@ -153,6 +162,9 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: locnguyen96/chipyard-dev:latest
+    defaults:
+      run:
+        shell: bash
     strategy:
       matrix:
         program: [Cipher, MatMul, MTHello]
