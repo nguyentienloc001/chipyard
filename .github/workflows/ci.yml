@@ -85,20 +85,8 @@ jobs:
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Init required submodules
         run: |
+          git submodule update --init --depth=1 generators/
           git submodule update --init --depth=1 \
-            generators/rocket-chip \
-            generators/hardfloat \
-            generators/diplomacy \
-            generators/testchipip \
-            generators/constellation \
-            generators/rocket-chip-blocks \
-            generators/rocket-chip-inclusive-cache \
-            generators/shuttle \
-            generators/rocc-acc-utils \
-            generators/cva6 \
-            generators/ibex \
-            generators/ara \
-            generators/nvdla \
             tools/cde \
             tools/dsptools \
             tools/rocket-dsp-utils \
@@ -132,20 +120,8 @@ jobs:
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Init required submodules
         run: |
+          git submodule update --init --depth=1 generators/
           git submodule update --init --depth=1 \
-            generators/rocket-chip \
-            generators/hardfloat \
-            generators/diplomacy \
-            generators/testchipip \
-            generators/constellation \
-            generators/rocket-chip-blocks \
-            generators/rocket-chip-inclusive-cache \
-            generators/shuttle \
-            generators/rocc-acc-utils \
-            generators/cva6 \
-            generators/ibex \
-            generators/ara \
-            generators/nvdla \
             tools/cde \
             tools/dsptools \
             tools/rocket-dsp-utils \
