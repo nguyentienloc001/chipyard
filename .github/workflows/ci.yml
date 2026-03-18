@@ -45,6 +45,8 @@ jobs:
         program: [Cipher, MatMul, MTHello]
     steps:
       - uses: actions/checkout@v4
+      - name: Fix git ownership
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Init toolchain submodules
         run: git submodule update --init --depth=1 toolchains/libgloss
       - name: Build ${{ matrix.program }}
@@ -67,6 +69,8 @@ jobs:
       image: locnguyen96/chipyard-dev:latest
     steps:
       - uses: actions/checkout@v4
+      - name: Fix git ownership
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Init required submodules
         run: |
           git submodule update --init --depth=1 \
@@ -104,6 +108,8 @@ jobs:
       image: locnguyen96/chipyard-dev:latest
     steps:
       - uses: actions/checkout@v4
+      - name: Fix git ownership
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Init required submodules
         run: |
           git submodule update --init --depth=1 \
