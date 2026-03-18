@@ -19,8 +19,8 @@ jobs:
       hw_changed: ${{ steps.filter.outputs.hw }}
       sw_changed: ${{ steps.filter.outputs.sw }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -47,7 +47,7 @@ jobs:
       matrix:
         program: [Cipher, MatMul, MTHello]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Fix git ownership
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Init and build libgloss
@@ -62,7 +62,7 @@ jobs:
         run: |
           source /opt/chipyard-env.sh
           make -C demoriscv/software/${{ matrix.program }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: sw-${{ matrix.program }}-${{ github.sha }}
           path: |
@@ -80,13 +80,14 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Fix git ownership
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Init required submodules
         run: |
           git submodule update --init --depth=1 generators/
           git submodule update --init --depth=1 \
+            sims/firesim \
             tools/cde \
             tools/dsptools \
             tools/rocket-dsp-utils \
@@ -100,7 +101,7 @@ jobs:
           source /opt/chipyard-env.sh
           cd sims/verilator
           make verilog CONFIG=RocketConfig
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: hw-verilog-${{ github.sha }}
           path: sims/verilator/generated-src/
@@ -115,13 +116,14 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Fix git ownership
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Init required submodules
         run: |
           git submodule update --init --depth=1 generators/
           git submodule update --init --depth=1 \
+            sims/firesim \
             tools/cde \
             tools/dsptools \
             tools/rocket-dsp-utils \
@@ -130,7 +132,7 @@ jobs:
             tools/circt \
             tools/install-circt \
             tools/torture
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: hw-verilog-${{ github.sha }}
           path: sims/verilator/generated-src/
@@ -139,7 +141,7 @@ jobs:
           source /opt/chipyard-env.sh
           cd sims/verilator
           make CONFIG=RocketConfig
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: simulator-${{ github.sha }}
           path: sims/verilator/simulator-*
@@ -161,12 +163,12 @@ jobs:
       matrix:
         program: [Cipher, MatMul, MTHello]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
         with:
           name: simulator-${{ github.sha }}
           path: sims/verilator/
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: sw-${{ matrix.program }}-${{ github.sha }}
           path: demoriscv/software/${{ matrix.program }}/build/
@@ -177,7 +179,7 @@ jobs:
           SIMULATOR=$(ls sims/verilator/simulator-* | head -1)
           BINARY=$(ls demoriscv/software/${{ matrix.program }}/build/*.elf | head -1)
           $SIMULATOR $BINARY 2>&1 | tee sim-${{ matrix.program }}.log
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: sim-results-${{ matrix.program }}-${{ github.sha }}
           path: sim-${{ matrix.program }}.log
