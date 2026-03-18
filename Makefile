@@ -5,13 +5,13 @@
 # For the full chipyard build system, see common.mk and variables.mk.
 #############################################################################
 
-DOCKER_DIR     := docker
-DOCKER_COMPOSE := docker compose -f $(DOCKER_DIR)/docker-compose.yml
-IMAGE          := locnguyen96/chipyard-dev:latest
-CONFIG         ?= RocketConfig
+DOCKER_DIR := docker
+IMAGE      := locnguyen96/chipyard-dev:latest
+CONFIG      ?= RocketConfig
+SW_PROGRAMS ?= MTHello Cipher MatMul
 
-.PHONY: help docker-build docker-shell docker-up docker-down \
-        generate verilator sim clean-sim
+.PHONY: help docker-build docker-shell \
+        build-sw generate verilator sim clean
 
 help:
 	@echo "Chipyard Makefile targets:"
@@ -19,16 +19,15 @@ help:
 	@echo "  Docker:"
 	@echo "    docker-build   Build Docker image (multi-arch)"
 	@echo "    docker-shell   Interactive shell via docker run"
-	@echo "    docker-up      Start docker-compose services"
-	@echo "    docker-down    Stop docker-compose services"
 	@echo ""
-	@echo "  Simulation (runs inside Docker):"
+	@echo "  Build (runs inside Docker):"
+	@echo "    build-sw       Build all software (Cipher, MatMul, MTHello)"
 	@echo "    generate       Generate Verilog (CONFIG=RocketConfig)"
 	@echo "    verilator      Build Verilator simulator"
 	@echo "    sim BINARY=x   Run simulation with a binary"
 	@echo ""
 	@echo "  Misc:"
-	@echo "    clean-sim      Remove generated simulation outputs"
+	@echo "    clean          Remove all generated outputs (HW + SW)"
 	@echo ""
 	@echo "  Override CONFIG:  make generate CONFIG=MyConfig"
 
@@ -40,13 +39,14 @@ docker-build:
 docker-shell:
 	$(DOCKER_DIR)/docker-run.sh shell
 
-docker-up:
-	$(DOCKER_COMPOSE) up -d
+# ── Build & Simulation (inside Docker) ────────────────────────────────────
 
-docker-down:
-	$(DOCKER_COMPOSE) down
-
-# ── Simulation (inside Docker) ────────────────────────────────────────────
+build-sw:
+	docker run --rm -v "$$(pwd):/workspace" -w /workspace $(IMAGE) \
+		bash -c 'source /opt/chipyard-env.sh 2>/dev/null && \
+		for d in $(SW_PROGRAMS); do \
+			echo "=== $$d ===" && make -C demoriscv/software/$$d clean && \
+			make -C demoriscv/software/$$d || exit 1; done'
 
 generate:
 	$(DOCKER_DIR)/docker-run.sh generate $(CONFIG)
@@ -59,6 +59,7 @@ sim:
 
 # ── Cleanup ───────────────────────────────────────────────────────────────
 
-clean-sim:
+clean:
 	rm -rf sims/verilator/generated-src sims/verilator/output
 	rm -f sims/verilator/simulator-*
+	for d in Cipher MatMul MTHello; do rm -rf demoriscv/software/$$d/build; done

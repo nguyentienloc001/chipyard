@@ -5,6 +5,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 IMAGE_NAME="locnguyen96/chipyard-dev:latest"
 
+# Use -it when TTY is available, -i only otherwise (for Makefile/CI)
+DOCKER_TTY_FLAG="-i"
+[ -t 0 ] && DOCKER_TTY_FLAG="-it"
+
 echo "=== Chipyard Docker Helper ==="
 echo ""
 
@@ -28,7 +32,7 @@ case "${1:-shell}" in
     generate)
         CONFIG="${2:-RocketConfig}"
         echo "Generating Verilog for CONFIG=$CONFIG ..."
-        docker run -it --rm \
+        docker run $DOCKER_TTY_FLAG --rm \
             -v "$PROJECT_ROOT:/workspace" \
             -w /workspace/sims/verilator \
             "$IMAGE_NAME" \
@@ -38,7 +42,7 @@ case "${1:-shell}" in
     verilator)
         CONFIG="${2:-RocketConfig}"
         echo "Building Verilator simulator for CONFIG=$CONFIG ..."
-        docker run -it --rm \
+        docker run $DOCKER_TTY_FLAG --rm \
             -v "$PROJECT_ROOT:/workspace" \
             -w /workspace/sims/verilator \
             "$IMAGE_NAME" \
@@ -49,11 +53,11 @@ case "${1:-shell}" in
         CONFIG="${2:-RocketConfig}"
         BINARY="${3:?Usage: docker/docker-run.sh sim <CONFIG> <path-to-binary>}"
         echo "Running simulation CONFIG=$CONFIG BINARY=$BINARY ..."
-        docker run -it --rm \
+        docker run $DOCKER_TTY_FLAG --rm \
             -v "$PROJECT_ROOT:/workspace" \
             -w /workspace/sims/verilator \
             "$IMAGE_NAME" \
-            bash -c "source /opt/chipyard-env.sh && make run-binary CONFIG=$CONFIG BINARY=$BINARY"
+            bash -c "source /opt/chipyard-env.sh && make run-binary CONFIG=$CONFIG BINARY=/workspace/$BINARY"
         ;;
 
     *)
