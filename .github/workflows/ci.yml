@@ -1,0 +1,142 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Only run on nguyentienloc001/chipyard repo
+env:
+  CI_REPO: nguyentienloc001/chipyard
+
+jobs:
+  detect-changes:
+    if: github.repository == 'nguyentienloc001/chipyard'
+    runs-on: ubuntu-latest
+    outputs:
+      hw_changed: ${{ steps.filter.outputs.hw }}
+      sw_changed: ${{ steps.filter.outputs.sw }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            hw:
+              - 'generators/**'
+              - 'build.sbt'
+              - 'common.mk'
+              - 'variables.mk'
+              - 'sims/**/*.mk'
+              - 'sims/**/*.scala'
+            sw:
+              - 'demoriscv/software/**'
+
+  build-sw:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.sw_changed == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    container:
+      image: locnguyen96/chipyard-dev:latest
+    strategy:
+      matrix:
+        program: [Cipher, MatMul, MTHello]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build ${{ matrix.program }}
+        run: |
+          source /opt/chipyard-env.sh
+          make -C demoriscv/software/${{ matrix.program }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sw-${{ matrix.program }}-${{ github.sha }}
+          path: |
+            demoriscv/software/${{ matrix.program }}/build/*.elf
+            demoriscv/software/${{ matrix.program }}/build/*.bin
+          retention-days: 30
+
+  build-hw:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.hw_changed == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    container:
+      image: locnguyen96/chipyard-dev:latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Generate Verilog
+        run: |
+          source /opt/chipyard-env.sh
+          cd sims/verilator
+          make verilog CONFIG=RocketConfig
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hw-verilog-${{ github.sha }}
+          path: sims/verilator/generated-src/
+          retention-days: 30
+
+  build-simulator:
+    needs: build-hw
+    runs-on: ubuntu-latest
+    container:
+      image: locnguyen96/chipyard-dev:latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/download-artifact@v4
+        with:
+          name: hw-verilog-${{ github.sha }}
+          path: sims/verilator/generated-src/
+      - name: Build Verilator simulator
+        run: |
+          source /opt/chipyard-env.sh
+          cd sims/verilator
+          make CONFIG=RocketConfig
+      - uses: actions/upload-artifact@v4
+        with:
+          name: simulator-${{ github.sha }}
+          path: sims/verilator/simulator-*
+          retention-days: 30
+
+  run-simulation:
+    needs: [build-simulator, build-sw]
+    if: |
+      always() &&
+      needs.build-simulator.result == 'success' &&
+      needs.build-sw.result == 'success'
+    runs-on: ubuntu-latest
+    container:
+      image: locnguyen96/chipyard-dev:latest
+    strategy:
+      matrix:
+        program: [Cipher, MatMul, MTHello]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/download-artifact@v4
+        with:
+          name: simulator-${{ github.sha }}
+          path: sims/verilator/
+      - uses: actions/download-artifact@v4
+        with:
+          name: sw-${{ matrix.program }}-${{ github.sha }}
+          path: demoriscv/software/${{ matrix.program }}/build/
+      - name: Run simulation for ${{ matrix.program }}
+        run: |
+          source /opt/chipyard-env.sh
+          chmod +x sims/verilator/simulator-*
+          SIMULATOR=$(ls sims/verilator/simulator-* | head -1)
+          BINARY=$(ls demoriscv/software/${{ matrix.program }}/build/*.elf | head -1)
+          $SIMULATOR $BINARY 2>&1 | tee sim-${{ matrix.program }}.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sim-results-${{ matrix.program }}-${{ github.sha }}
+          path: sim-${{ matrix.program }}.log
+          retention-days: 30
