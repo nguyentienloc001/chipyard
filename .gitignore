@@ -30,4 +30,6 @@ project/project/
 .sbt
 .classpath_cache/
 .vscode/
+.java_tmp/
 tests/build/
+demoriscv/software/*/build/

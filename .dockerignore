@@ -21,6 +21,11 @@ software/spec2017
 .java_tmp
 .ivy2
 .sbt
+.bloop
+.metals
+.bsp
+target
+.vscode
 
 # Ignore git internals (but keep .gitmodules)
 .git
