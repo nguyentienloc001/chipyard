@@ -1,22 +1,22 @@
 #!/bin/bash
 set -e
 
-IMAGE_NAME="chipyard:latest"
-PLATFORM="--platform linux/amd64"
+IMAGE_NAME="locnguyen96/chipyard-dev:latest"
 
 echo "=== Chipyard Docker Helper ==="
 echo ""
 
 case "${1:-shell}" in
     build)
-        echo "Building Docker image..."
-        docker build $PLATFORM -t "$IMAGE_NAME" .
-        echo "Done! Run: ./docker-run.sh shell"
+        echo "Use docker/build.sh to build the image."
+        echo "  cd docker && ./build.sh --platform linux/arm64"
+        echo "  cd docker && ./build.sh --push"
+        exit 0
         ;;
 
     shell)
         echo "Starting interactive shell..."
-        docker run $PLATFORM -it --rm \
+        docker run -it --rm \
             -v "$(pwd):/workspace" \
             -w /workspace \
             "$IMAGE_NAME" \
@@ -27,7 +27,7 @@ case "${1:-shell}" in
         # Generate Verilog for a given CONFIG (default: RocketConfig)
         CONFIG="${2:-RocketConfig}"
         echo "Generating Verilog for CONFIG=$CONFIG ..."
-        docker run $PLATFORM -it --rm \
+        docker run -it --rm \
             -v "$(pwd):/workspace" \
             -w /workspace/sims/verilator \
             "$IMAGE_NAME" \
@@ -38,7 +38,7 @@ case "${1:-shell}" in
         # Build verilator simulator for a given CONFIG
         CONFIG="${2:-RocketConfig}"
         echo "Building Verilator simulator for CONFIG=$CONFIG ..."
-        docker run $PLATFORM -it --rm \
+        docker run -it --rm \
             -v "$(pwd):/workspace" \
             -w /workspace/sims/verilator \
             "$IMAGE_NAME" \
@@ -50,7 +50,7 @@ case "${1:-shell}" in
         CONFIG="${2:-RocketConfig}"
         BINARY="${3:?Usage: ./docker-run.sh sim <CONFIG> <path-to-binary>}"
         echo "Running simulation CONFIG=$CONFIG BINARY=$BINARY ..."
-        docker run $PLATFORM -it --rm \
+        docker run -it --rm \
             -v "$(pwd):/workspace" \
             -w /workspace/sims/verilator \
             "$IMAGE_NAME" \

@@ -1,10 +1,6 @@
 services:
   chipyard:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    platform: linux/amd64
-    image: chipyard:latest
+    image: locnguyen96/chipyard-dev:latest
     container_name: chipyard
     stdin_open: true
     tty: true
