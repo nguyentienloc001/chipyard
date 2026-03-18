@@ -174,7 +174,17 @@ RUN cd /tmp && \
     (make install || true) && \
     cd / && rm -rf /tmp/riscv-tests
 
-# ── 6. Build DRAMSim2 shared library ─────────────────────────────────────
+# ── 6. Build libgloss-htif (HTIF linker script + library) ────────────────
+RUN cd /tmp && \
+    git clone --depth 1 https://github.com/ucb-bar/libgloss-htif.git && \
+    cd libgloss-htif && \
+    mkdir build && cd build && \
+    ../configure --prefix=$RISCV/riscv64-unknown-elf --host=riscv64-unknown-elf && \
+    make -j$(nproc) && \
+    make install && \
+    cd / && rm -rf /tmp/libgloss-htif
+
+# ── 7. Build DRAMSim2 shared library ─────────────────────────────────────
 RUN cd /tmp && \
     git clone --depth 1 https://github.com/dramninjasUMD/DRAMSim2.git && \
     cd DRAMSim2 && \
