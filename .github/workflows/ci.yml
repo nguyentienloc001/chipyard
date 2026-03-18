@@ -85,17 +85,7 @@ jobs:
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Init required submodules
         run: |
-          git submodule update --init --depth=1 generators/
-          git submodule update --init --depth=1 \
-            sims/firesim \
-            tools/cde \
-            tools/dsptools \
-            tools/rocket-dsp-utils \
-            tools/fixedpoint \
-            tools/firrtl2 \
-            tools/circt \
-            tools/install-circt \
-            tools/torture
+          git submodule update --init --depth=1 generators/ tools/ sims/firesim
       - name: Generate Verilog
         run: |
           source /opt/chipyard-env.sh
@@ -121,17 +111,7 @@ jobs:
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Init required submodules
         run: |
-          git submodule update --init --depth=1 generators/
-          git submodule update --init --depth=1 \
-            sims/firesim \
-            tools/cde \
-            tools/dsptools \
-            tools/rocket-dsp-utils \
-            tools/fixedpoint \
-            tools/firrtl2 \
-            tools/circt \
-            tools/install-circt \
-            tools/torture
+          git submodule update --init --depth=1 generators/ tools/ sims/firesim
       - uses: actions/download-artifact@v5
         with:
           name: hw-verilog-${{ github.sha }}
