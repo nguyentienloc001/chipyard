@@ -33,3 +33,7 @@ project/project/
 .java_tmp/
 tests/build/
 demoriscv/software/*/build/
+
+# Vivado installation (14GB+) — built by docker/install-vivado.sh
+vivado-install/
+Xilinx_Unified_2021.2_1021_0703/

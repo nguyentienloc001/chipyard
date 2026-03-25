@@ -1,0 +1,19 @@
+#### Xilinx Unified Installer 2021.2 Install Configuration ####
+#### Vivado ML Standard — Virtex-7 only (for VC707)       ####
+
+Edition=Vitis Unified Software Platform
+
+Product=Vivado
+
+Destination=/opt/Xilinx
+
+Modules=Vitis Networking P4:0,Vitis Model Composer(different different different different different):0,DocNav:0,Acquire a License Key:0
+
+# Device families — enable only Virtex-7
+Modules=SoCs:0,Spartan-7:0,Artix-7:0,Kintex-7:0,Virtex-7:1,Zynq-7000:0,Kintex UltraScale:0,Virtex UltraScale:0,Kintex UltraScale+:0,Virtex UltraScale+:0,Zynq UltraScale+ MPSoC:0,Zynq UltraScale+ RFSoC:0,Versal ACAP:0,Versal Premium:0
+
+CreateProgramGroupShortcuts=0
+CreateShortcutsForAllUsers=0
+CreateDesktopShortcuts=0
+CreateFileAssociation=0
+EnableDiskUsageOptimization=1
