@@ -7,36 +7,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Only run on nguyentienloc001/chipyard repo
 env:
   CI_REPO: nguyentienloc001/chipyard
 
 jobs:
-  detect-changes:
+  build-and-test:
     if: github.repository == 'nguyentienloc001/chipyard'
-    runs-on: ubuntu-latest
-    outputs:
-      hw_changed: ${{ steps.filter.outputs.hw }}
-      sw_changed: ${{ steps.filter.outputs.sw }}
-    steps:
-      - uses: actions/checkout@v5
-      - uses: dorny/paths-filter@v4
-        id: filter
-        with:
-          filters: |
-            hw:
-              - 'generators/**'
-              - 'build.sbt'
-              - 'common.mk'
-              - 'variables.mk'
-              - 'sims/**/*.mk'
-              - 'sims/**/*.scala'
-            sw:
-              - 'demoriscv/software/**'
-
-  build-sw:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.sw_changed == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     container:
       image: locnguyen96/chipyard-dev:latest
@@ -44,13 +20,19 @@ jobs:
       run:
         shell: bash
     strategy:
+      fail-fast: false
       matrix:
-        program: [Cipher, MatMul, MTHello]
+        config: [ThesisSoC, QuadCoreRing, QuadCoreMeshThesis]
     steps:
       - uses: actions/checkout@v5
       - name: Fix git ownership
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - name: Init and build libgloss
+
+      - name: Init submodules
+        run: |
+          git submodule update --init --depth=1 generators/ tools/ sims/firesim
+
+      - name: Build libgloss
         run: |
           git submodule update --init --depth=1 toolchains/libgloss
           source /opt/chipyard-env.sh
@@ -58,41 +40,71 @@ jobs:
           mkdir -p build && cd build
           ../configure --prefix=$RISCV/riscv64-unknown-elf --host=riscv64-unknown-elf
           make -j$(nproc)
-      - name: Build ${{ matrix.program }}
+
+      - name: Build benchmark firmware
         run: |
           source /opt/chipyard-env.sh
-          make -C demoriscv/software/${{ matrix.program }}
-      - uses: actions/upload-artifact@v5
-        with:
-          name: sw-${{ matrix.program }}-${{ github.sha }}
-          path: |
-            demoriscv/software/${{ matrix.program }}/build/*.elf
-            demoriscv/software/${{ matrix.program }}/build/*.bin
-          retention-days: 30
+          make -C demoriscv/software/Benchmark clean all
 
-  build-hw:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.hw_changed == 'true' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    container:
-      image: locnguyen96/chipyard-dev:latest
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v5
-      - name: Fix git ownership
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-      - name: Init required submodules
-        run: |
-          git submodule update --init --depth=1 generators/ tools/ sims/firesim
-      - name: Generate Verilog
+      - name: Generate Verilog for ${{ matrix.config }}
         run: |
           source /opt/chipyard-env.sh
           cd sims/verilator
-          make verilog CONFIG=RocketConfig
+          make SUB_PROJECT=chipyard CONFIG=${{ matrix.config }} verilog
+
+      - name: Build Verilator simulator for ${{ matrix.config }}
+        run: |
+          source /opt/chipyard-env.sh
+          cd sims/verilator
+          make SUB_PROJECT=chipyard CONFIG=${{ matrix.config }}
+
+      - name: Run bench_matmul_scale on ${{ matrix.config }}
+        run: |
+          source /opt/chipyard-env.sh
+          cd sims/verilator
+          make SUB_PROJECT=chipyard CONFIG=${{ matrix.config }} \
+            BINARY=$GITHUB_WORKSPACE/demoriscv/software/Benchmark/build/bench_matmul_scale.elf \
+            TIMEOUT_CYCLES=100000000 run-binary
+
+      - name: Run bench_pingpong on ${{ matrix.config }}
+        run: |
+          source /opt/chipyard-env.sh
+          cd sims/verilator
+          make SUB_PROJECT=chipyard CONFIG=${{ matrix.config }} \
+            BINARY=$GITHUB_WORKSPACE/demoriscv/software/Benchmark/build/bench_pingpong.elf \
+            TIMEOUT_CYCLES=100000000 run-binary
+
+      - name: Run bench_mem_latency on ${{ matrix.config }}
+        run: |
+          source /opt/chipyard-env.sh
+          cd sims/verilator
+          make SUB_PROJECT=chipyard CONFIG=${{ matrix.config }} \
+            BINARY=$GITHUB_WORKSPACE/demoriscv/software/Benchmark/build/bench_mem_latency.elf \
+            TIMEOUT_CYCLES=500000000 run-binary
+
+      - name: Run bench_mem_bandwidth on ${{ matrix.config }}
+        run: |
+          source /opt/chipyard-env.sh
+          cd sims/verilator
+          make SUB_PROJECT=chipyard CONFIG=${{ matrix.config }} \
+            BINARY=$GITHUB_WORKSPACE/demoriscv/software/Benchmark/build/bench_mem_bandwidth.elf \
+            TIMEOUT_CYCLES=100000000 run-binary
+
+      - name: Collect results
+        if: always()
+        run: |
+          echo "=== Results for ${{ matrix.config }} ==="
+          for f in sims/verilator/output/chipyard.harness.TestHarness.${{ matrix.config }}/*.log; do
+            echo "--- $(basename $f) ---"
+            cat "$f"
+            echo
+          done
+
       - uses: actions/upload-artifact@v5
+        if: always()
         with:
-          name: hw-verilog-${{ github.sha }}
-          path: sims/verilator/generated-src/
+          name: results-${{ matrix.config }}-${{ github.sha }}
+          path: |
+            sims/verilator/output/chipyard.harness.TestHarness.${{ matrix.config }}/*.log
+            sims/verilator/output/chipyard.harness.TestHarness.${{ matrix.config }}/*.out
           retention-days: 30
