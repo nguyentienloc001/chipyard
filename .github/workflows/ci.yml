@@ -11,7 +11,7 @@ env:
   CI_REPO: nguyentienloc001/chipyard
 
 jobs:
-  build-and-test:
+  build:
     if: github.repository == 'nguyentienloc001/chipyard'
     runs-on: ubuntu-latest
     container:
@@ -46,65 +46,72 @@ jobs:
           source /opt/chipyard-env.sh
           make -C demoriscv/software/Benchmark clean all
 
-      - name: Generate Verilog for ${{ matrix.config }}
-        run: |
-          source /opt/chipyard-env.sh
-          cd sims/verilator
-          make SUB_PROJECT=chipyard CONFIG=${{ matrix.config }} verilog
-
-      - name: Build Verilator simulator for ${{ matrix.config }}
+      - name: Generate Verilog and build simulator for ${{ matrix.config }}
         run: |
           source /opt/chipyard-env.sh
           cd sims/verilator
           make SUB_PROJECT=chipyard CONFIG=${{ matrix.config }}
 
-      - name: Run bench_matmul_scale on ${{ matrix.config }}
+      - name: Upload simulator and firmware
+        uses: actions/upload-artifact@v5
+        with:
+          name: build-${{ matrix.config }}-${{ github.sha }}
+          path: |
+            sims/verilator/simulator-chipyard.harness-${{ matrix.config }}
+            sims/verilator/generated-src/chipyard.harness.TestHarness.${{ matrix.config }}/gen-collateral/
+            demoriscv/software/Benchmark/build/*.elf
+          retention-days: 7
+
+  test:
+    needs: build
+    if: github.repository == 'nguyentienloc001/chipyard'
+    runs-on: ubuntu-latest
+    container:
+      image: locnguyen96/chipyard-dev:latest
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [ThesisSoC, QuadCoreRing, QuadCoreMeshThesis]
+        benchmark: [bench_matmul_scale, bench_pingpong, bench_mem_latency, bench_mem_bandwidth]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Fix git ownership
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Init submodules (DRAMSim2)
+        run: |
+          git submodule update --init --depth=1 tools/DRAMSim2
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v5
+        with:
+          name: build-${{ matrix.config }}-${{ github.sha }}
+
+      - name: Make simulator executable
+        run: chmod +x sims/verilator/simulator-chipyard.harness-${{ matrix.config }}
+
+      - name: Run ${{ matrix.benchmark }} on ${{ matrix.config }}
         run: |
           source /opt/chipyard-env.sh
           cd sims/verilator
+          mkdir -p output/chipyard.harness.TestHarness.${{ matrix.config }}
           make SUB_PROJECT=chipyard CONFIG=${{ matrix.config }} \
-            BINARY=$GITHUB_WORKSPACE/demoriscv/software/Benchmark/build/bench_matmul_scale.elf \
+            BINARY=$GITHUB_WORKSPACE/demoriscv/software/Benchmark/build/${{ matrix.benchmark }}.elf \
             TIMEOUT_CYCLES=500000000 run-binary
 
-      - name: Run bench_pingpong on ${{ matrix.config }}
-        run: |
-          source /opt/chipyard-env.sh
-          cd sims/verilator
-          make SUB_PROJECT=chipyard CONFIG=${{ matrix.config }} \
-            BINARY=$GITHUB_WORKSPACE/demoriscv/software/Benchmark/build/bench_pingpong.elf \
-            TIMEOUT_CYCLES=500000000 run-binary
-
-      - name: Run bench_mem_latency on ${{ matrix.config }}
-        run: |
-          source /opt/chipyard-env.sh
-          cd sims/verilator
-          make SUB_PROJECT=chipyard CONFIG=${{ matrix.config }} \
-            BINARY=$GITHUB_WORKSPACE/demoriscv/software/Benchmark/build/bench_mem_latency.elf \
-            TIMEOUT_CYCLES=500000000 run-binary
-
-      - name: Run bench_mem_bandwidth on ${{ matrix.config }}
-        run: |
-          source /opt/chipyard-env.sh
-          cd sims/verilator
-          make SUB_PROJECT=chipyard CONFIG=${{ matrix.config }} \
-            BINARY=$GITHUB_WORKSPACE/demoriscv/software/Benchmark/build/bench_mem_bandwidth.elf \
-            TIMEOUT_CYCLES=500000000 run-binary
-
-      - name: Collect results
+      - name: Show results
         if: always()
         run: |
-          echo "=== Results for ${{ matrix.config }} ==="
-          for f in sims/verilator/output/chipyard.harness.TestHarness.${{ matrix.config }}/*.log; do
-            echo "--- $(basename $f) ---"
-            cat "$f"
-            echo
-          done
+          echo "=== ${{ matrix.benchmark }} on ${{ matrix.config }} ==="
+          cat sims/verilator/output/chipyard.harness.TestHarness.${{ matrix.config }}/${{ matrix.benchmark }}.log 2>/dev/null || echo "No log file"
 
       - uses: actions/upload-artifact@v5
         if: always()
         with:
-          name: results-${{ matrix.config }}-${{ github.sha }}
+          name: result-${{ matrix.config }}-${{ matrix.benchmark }}-${{ github.sha }}
           path: |
-            sims/verilator/output/chipyard.harness.TestHarness.${{ matrix.config }}/*.log
-            sims/verilator/output/chipyard.harness.TestHarness.${{ matrix.config }}/*.out
+            sims/verilator/output/chipyard.harness.TestHarness.${{ matrix.config }}/${{ matrix.benchmark }}.*
           retention-days: 30
