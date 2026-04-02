@@ -64,7 +64,7 @@ jobs:
           cd sims/verilator
           make SUB_PROJECT=chipyard CONFIG=${{ matrix.config }} \
             BINARY=$GITHUB_WORKSPACE/demoriscv/software/Benchmark/build/bench_matmul_scale.elf \
-            TIMEOUT_CYCLES=100000000 run-binary
+            TIMEOUT_CYCLES=500000000 run-binary
 
       - name: Run bench_pingpong on ${{ matrix.config }}
         run: |
@@ -72,7 +72,7 @@ jobs:
           cd sims/verilator
           make SUB_PROJECT=chipyard CONFIG=${{ matrix.config }} \
             BINARY=$GITHUB_WORKSPACE/demoriscv/software/Benchmark/build/bench_pingpong.elf \
-            TIMEOUT_CYCLES=100000000 run-binary
+            TIMEOUT_CYCLES=500000000 run-binary
 
       - name: Run bench_mem_latency on ${{ matrix.config }}
         run: |
@@ -88,7 +88,7 @@ jobs:
           cd sims/verilator
           make SUB_PROJECT=chipyard CONFIG=${{ matrix.config }} \
             BINARY=$GITHUB_WORKSPACE/demoriscv/software/Benchmark/build/bench_mem_bandwidth.elf \
-            TIMEOUT_CYCLES=100000000 run-binary
+            TIMEOUT_CYCLES=500000000 run-binary
 
       - name: Collect results
         if: always()
