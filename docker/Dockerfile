@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 ##############################################################################
 # Chipyard Docker Image — Multi-Stage, Multi-Arch (amd64 + arm64)
 #
@@ -77,7 +78,7 @@ ENV PATH="$RISCV/bin:$PATH"
 # ── 1. Verilator 5.022 ───────────────────────────────────────────────────
 ARG VERILATOR_VERSION=5.022
 RUN cd /tmp && \
-    curl -fsSL "https://github.com/verilator/verilator/archive/refs/tags/v${VERILATOR_VERSION}.tar.gz" \
+    curl -fsSL "https://github.com/verilator/verilator/archive/v${VERILATOR_VERSION}.tar.gz" \
         | tar xz && \
     cd verilator-${VERILATOR_VERSION} && \
     autoconf && \
@@ -201,8 +202,11 @@ RUN strip --strip-debug $RISCV/bin/spike 2>/dev/null || true && \
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Stage 3: Final — minimal runtime, no build tools
-#   Vivado is pre-installed on the host via docker/install-vivado.sh
-#   and copied directly into the image (avoids 73GB COPY of installer).
+#
+# Vivado pre-requisite: run docker/install-vivado.sh BEFORE building.
+# That script installs Vivado to vivado-install/ on the host.  Only the
+# ~15 GB installed result is COPYed here — the 72 GB installer tarball
+# never enters the Docker build context.
 # ═══════════════════════════════════════════════════════════════════════════
 FROM ubuntu:22.04 AS final
 
@@ -241,13 +245,21 @@ COPY --from=builder /opt/riscv /opt/riscv
 COPY --from=builder /opt/verilator /opt/verilator
 COPY --from=builder /opt/firtool /opt/firtool
 
-# Copy pre-installed Vivado (installed on host via docker/install-vivado.sh)
+# Copy pre-installed Vivado (run docker/install-vivado.sh first to populate vivado-install/)
 COPY vivado-install/ /opt/Xilinx/
 
 ENV XILINX_VIVADO=/opt/Xilinx/Vivado/2021.2
 ENV PATH="$RISCV/bin:/opt/verilator/bin:/opt/firtool/bin:${XILINX_VIVADO}/bin:/usr/local/bin:$PATH"
 ENV LD_LIBRARY_PATH="$RISCV/lib:/opt/firtool/lib"
 # License: provide at runtime via -e XILINXD_LICENSE_FILE=<port>@<host>
+
+# libudev stub — replaces Ubuntu 22.04 libudev.so.1 which crashes when called
+# from Vivado 2021.2's FLEXlm license manager (realloc invalid pointer / SIGABRT).
+# Must be done AFTER all apt-get installs since apt/curl depend on the real libudev.
+COPY docker/libudev_stub.c /tmp/libudev_stub.c
+RUN gcc -shared -fPIC -Wl,-soname,libudev.so.1 \
+        -o /lib/x86_64-linux-gnu/libudev.so.1.7.2 /tmp/libudev_stub.c && \
+    rm /tmp/libudev_stub.c
 
 # Verify tools are working
 RUN firtool --version && verilator --version && spike --help 2>&1 | head -1

@@ -1,5 +1,5 @@
 #### Xilinx Unified Installer 2021.2 Install Configuration ####
-#### Vivado ML Standard — Virtex-7 only (for VC707)       ####
+#### Vivado only — Virtex-7 devices only (for VC707)      ####
 
 Edition=Vitis Unified Software Platform
 
@@ -7,10 +7,11 @@ Product=Vivado
 
 Destination=/opt/Xilinx
 
-Modules=Vitis Networking P4:0,Vitis Model Composer(different different different different different):0,DocNav:0,Acquire a License Key:0
-
-# Device families — enable only Virtex-7
-Modules=SoCs:0,Spartan-7:0,Artix-7:0,Kintex-7:0,Virtex-7:1,Zynq-7000:0,Kintex UltraScale:0,Virtex UltraScale:0,Kintex UltraScale+:0,Virtex UltraScale+:0,Zynq UltraScale+ MPSoC:0,Zynq UltraScale+ RFSoC:0,Versal ACAP:0,Versal Premium:0
+# Module names verified from installer log (xinstall_1775960728064.log).
+# All entries use the exact names reported by the installer.
+# Vivado is selected via Product=Vivado above; everything else is disabled
+# except Virtex-7 device support needed for the VC707 board.
+Modules=Vitis:0,Vitis HLS:0,Adds Common Links:1,System Generator:0,Model Composer:0,Vitis Model Composer(Xilinx Toolbox for MATLAB and Simulink. Includes the functionality of System Generator for DSP):0,DocNav:0,Xilinx Information Center:0,Install devices for Alveo and Xilinx edge acceleration platforms:0,Install Devices for Kria SOMs and Starter Kits:0,Zynq-7000 Vivado Devices:0,Zynq-7000:0,Zynq UltraScale+ MPSoC:0,Zynq UltraScale+ RFSoC:0,Artix-7 Vivado:0,Artix-7:0,Kintex-7 Vivado Devices:0,Kintex-7:0,Spartan-7 Vivado Devices:0,Spartan-7:0,Virtex-7 Vivado Devices:1,Virtex-7:1,7 Series:1,Kintex UltraScale:0,Virtex UltraScale:0,UltraScale:0,Kintex UltraScale+:0,Artix UltraScale+:0,Virtex UltraScale+:0,Virtex UltraScale+ HBM:0,Virtex UltraScale+ 58G:0,Versal AI Core Devices:0,Cardano for Vitis:0,Versal AI Core Series:0,Versal Prime Series:0,Versal AI Edge Series:0
 
 CreateProgramGroupShortcuts=0
 CreateShortcutsForAllUsers=0
