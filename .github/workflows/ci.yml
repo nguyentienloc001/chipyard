@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config: [ThesisSoC, QuadCoreRing, QuadCoreMeshThesis]
+        config: [SharedBusSoC, ThesisSoC, QuadCoreRing, QuadCoreMesh, QuadCoreTree]
     steps:
       - uses: actions/checkout@v5
       - name: Fix git ownership
@@ -74,7 +74,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        config: [ThesisSoC, QuadCoreRing, QuadCoreMeshThesis]
+        config: [SharedBusSoC, ThesisSoC, QuadCoreRing, QuadCoreMesh, QuadCoreTree]
         benchmark: [bench_matmul_scale, bench_pingpong, bench_mem_latency, bench_mem_bandwidth]
     steps:
       - uses: actions/checkout@v5
