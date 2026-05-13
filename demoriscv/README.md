@@ -32,11 +32,11 @@ demoriscv/
 
 Defined in `generators/chipyard/src/main/scala/config/CustomConfigs.scala`:
 
-- **`SharedBusSoC`** — Broadcast bus baseline (worst-case interconnect)
+- **`SharedBusSoC`** — Broadcast bus baseline (worst-case interconnect) *(added Phase 1)*
 - **`ThesisSoC`** — Base 4-core config, TileLink crossbar (no crypto)
 - **`QuadCoreRing`** — 4 cores + Ring NoC topology (BidirectionalTorus1D)
 - **`QuadCoreMesh`** — 4 cores + Mesh 2D (3x2) topology
-- **`QuadCoreTree`** — 4 cores + Tree NoC topology (BidirectionalTree)
+- **`QuadCoreTree`** — 4 cores + Tree NoC topology (BidirectionalTree) *(added Phase 1)*
 
 ## Memory Map
 

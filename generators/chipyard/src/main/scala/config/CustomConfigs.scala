@@ -10,6 +10,9 @@ import constellation.noc._
 
 import scala.collection.immutable.ListMap
 
+// DEPRECATED: Previously used by CustomSoC. Crypto accelerators (AES, SHA3, ChaCha)
+// sit on pbus, not sbus — they do not exercise the interconnect under test.
+// Kept for reference only; not instantiated by any active config.
 class PeripheralConfig extends Config(
 //  new chipyard.cipher.WithMyTimer(address = 0x1000E000) ++
   new chipyard.cipher.WithAES(address = 0x10008000) ++
@@ -23,7 +26,6 @@ class PeripheralConfig extends Config(
 )
 
 // DEPRECATED: Legacy config with crypto accelerators, kept for reference only
-// DOC include start: GCDTLBlackBoxRocketConfig
 class GCDTLBlackBoxRocketConfig extends Config(
   new chipyard.cipher.WithMyTimer(address = 0x1000E000) ++
 //    new chipyard.cipher.WithAES(address = 0x1000D000) ++
@@ -38,7 +40,6 @@ class GCDTLBlackBoxRocketConfig extends Config(
     new freechips.rocketchip.subsystem.WithoutTLMonitors ++
     new freechips.rocketchip.rocket.WithNBigCores(1) ++
     new chipyard.config.AbstractConfig)
-// DOC include end: GCDTLBlackBoxRocketConfig
 
 class CustomSoC extends Config(
   new freechips.rocketchip.subsystem.WithoutTLMonitors ++
