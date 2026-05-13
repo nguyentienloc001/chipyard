@@ -135,3 +135,28 @@ class QuadCoreMesh extends Config(
   new chipyard.config.AbstractConfig
 )
 // DOC include end: QuadCoreMesh
+
+// DOC include start: QuadCoreTree
+// Tree topology NoC — BidirectionalTree(height=2, dAry=2) = 7 routers
+// Node layout: root=0, level-1={1,2}, leaves={3,4,5,6}
+// Cores at leaves (nodes 3-6), memory/system at root (node 0).
+// Natural hierarchy matches NUMA-like memory access patterns.
+class QuadCoreTree extends Config(
+  new constellation.soc.WithSbusNoC(constellation.protocol.SimpleTLNoCParams(
+    constellation.protocol.DiplomaticNetworkNodeMapping(
+      inNodeMapping = ListMap(
+        "Core 0" -> 3, "Core 1" -> 4,
+        "Core 2" -> 5, "Core 3" -> 6,
+        "debug[0]" -> 0),
+      outNodeMapping = ListMap(
+        "system[0]" -> 0,
+        "pbus" -> 0)),
+    nocParams = NoCParams(
+      topology = BidirectionalTree(height = 2, dAry = 2),
+      channelParamGen = (a, b) => UserChannelParams(Seq.fill(10) { UserVirtualChannelParams(4) }),
+      routingRelation = NonblockingVirtualSubnetworksRouting(BidirectionalTreeRouting(), 5, 2))
+  )) ++
+  new ThesisSoC ++
+  new chipyard.config.AbstractConfig
+)
+// DOC include end: QuadCoreTree
