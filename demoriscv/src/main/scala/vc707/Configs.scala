@@ -102,6 +102,21 @@ class HeteroCoreConfig extends Config (
   new chipyard.config.AbstractConfig
 )
 
+class SharedBusVC707Config extends Config(
+  new WithVC707Tweaks ++
+  new chipyard.SharedBusSoC
+)
+
+class QuadCoreTreeVC707Config extends Config(
+  new WithVC707Tweaks ++
+  new chipyard.QuadCoreTree
+)
+
+class QuadCoreMeshVC707Config extends Config(
+  new WithVC707Tweaks ++
+  new chipyard.QuadCoreMesh
+)
+
 class WithFPGAFrequency(fMHz: Double) extends Config (
   new chipyard.config.WithPeripheryBusFrequency(fMHz) ++
     new chipyard.config.WithMemoryBusFrequency(fMHz) ++
