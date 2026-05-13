@@ -22,6 +22,7 @@ class PeripheralConfig extends Config(
 //  new chipyard.cipher.WithKLEIN(address = 0x10006000) ++
 )
 
+// DEPRECATED: Legacy config with crypto accelerators, kept for reference only
 // DOC include start: GCDTLBlackBoxRocketConfig
 class GCDTLBlackBoxRocketConfig extends Config(
   new chipyard.cipher.WithMyTimer(address = 0x1000E000) ++
@@ -41,7 +42,6 @@ class GCDTLBlackBoxRocketConfig extends Config(
 
 class CustomSoC extends Config(
   new freechips.rocketchip.subsystem.WithoutTLMonitors ++
-  new PeripheralConfig ++
   new chipyard.config.WithNoUART ++
   new testchipip.soc.WithNoScratchpads ++
   new freechips.rocketchip.rocket.WithNBigCores(4) ++
@@ -50,9 +50,6 @@ class CustomSoC extends Config(
 
 class ThesisSoC extends Config(
   new freechips.rocketchip.subsystem.WithoutTLMonitors ++
-  new chipyard.cipher.WithSHA3(address = 0x10008000) ++
-  new chipyard.cipher.WithChaCha(address = 0x10007000) ++
-  new chipyard.cipher.WithKLEIN(address = 0x10006000) ++
   new chipyard.config.WithUART(address = 0x64000000) ++
   new chipyard.config.WithNoUART ++
   new testchipip.soc.WithNoScratchpads ++
