@@ -58,6 +58,19 @@ class ThesisSoC extends Config(
   new chipyard.config.AbstractConfig
 )
 
+// Shared bus baseline — broadcast coherence manager replaces crossbar directory protocol
+// Worst-case interconnect: all requests serialized through a single broadcast.
+// Lower-bound for all interconnect comparisons.
+class SharedBusSoC extends Config(
+  new freechips.rocketchip.subsystem.WithoutTLMonitors ++
+  new chipyard.config.WithBroadcastManager ++
+  new chipyard.config.WithUART(address = 0x64000000) ++
+  new chipyard.config.WithNoUART ++
+  new testchipip.soc.WithNoScratchpads ++
+  new freechips.rocketchip.rocket.WithNBigCores(4) ++
+  new chipyard.config.AbstractConfig
+)
+
 
 // DOC include start: QuadCoreRing
 class QuadCoreRing extends Config(
