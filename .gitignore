@@ -33,3 +33,5 @@ project/project/
 .java_tmp/
 tests/build/
 demoriscv/software/*/build/
+outputs/sim/
+outputs/fpga/*.bit
