@@ -59,6 +59,7 @@ int main(void) {
             N_CORES, (unsigned long)(BLOCK_WORDS * 4));
 
     a2a_phase = 1;
+    __sync_synchronize();
     wake_harts(N_CORES - 1);
     a2a_cycles[0] = do_alltoall(0);
     barrier(N_CORES);
@@ -71,7 +72,7 @@ int main(void) {
         if (a2a_cycles[i] < min_cyc) min_cyc = a2a_cycles[i];
     }
 
-    unsigned long total_bytes = (unsigned long)(N_CORES * (N_CORES - 1) * BLOCK_WORDS * 4);
+    unsigned long total_bytes = (unsigned long)N_CORES * (N_CORES - 1) * BLOCK_WORDS * 4UL;
     kprintf("  Aggregate: %ld bytes in %ld cycles\r\n", total_bytes, max_cyc);
     kprintf("  Throughput: %ld bytes/cycle (x1000)\r\n",
             total_bytes * 1000 / max_cyc);
