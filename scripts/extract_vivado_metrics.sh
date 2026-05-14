@@ -6,6 +6,8 @@
 
 set -euo pipefail
 
+cd "$(git rev-parse --show-toplevel)"
+
 CSV="outputs/results/synthesis_metrics.csv"
 mkdir -p outputs/results
 

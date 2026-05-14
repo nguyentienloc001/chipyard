@@ -11,6 +11,8 @@ REPO=$(git rev-parse --show-toplevel)
 WTBASE=/mnt/data/chipyard-worktrees
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
+# Ordered list for deterministic output
+FPGA_NAMES=(SharedBusVC707 CrossbarVC707 RingVC707 MeshVC707 TreeVC707)
 declare -A FPGA_CONFIGS=(
     [SharedBusVC707]="SharedBusVC707Config"
     [CrossbarVC707]="QuadCoreXBarVC707Config"
@@ -30,7 +32,7 @@ echo ""
 # Step 1: Set up worktrees
 echo "--- Setting up FPGA synthesis worktrees ---"
 mkdir -p "${WTBASE}"
-for name in "${!FPGA_CONFIGS[@]}"; do
+for name in "${FPGA_NAMES[@]}"; do
     wt="${WTBASE}/fpga-${name}"
     if [ ! -d "${wt}" ]; then
         echo "  Creating worktree: ${wt}"
@@ -43,7 +45,7 @@ done
 # Step 2: Print per-config synthesis commands
 echo ""
 echo "=== Run each of these in a separate terminal (parallel, license-limited): ==="
-for name in "${!FPGA_CONFIGS[@]}"; do
+for name in "${FPGA_NAMES[@]}"; do
     vivado_cfg="${FPGA_CONFIGS[$name]}"
     wt="${WTBASE}/fpga-${name}"
     cat << EOF
@@ -64,6 +66,8 @@ for name in SharedBusVC707 CrossbarVC707 RingVC707 MeshVC707 TreeVC707; do
   wt="${WTBASE}/fpga-${name}"
   outdir="${REPO}/outputs/fpga/${name}"
   mkdir -p "${outdir}"
+  # Note: if Vivado produces multiple matching reports, the last one wins.
+  # Standard Vivado output has exactly one report per type per run.
   find "${wt}/demoriscv/fpga" -name "*.bit" -exec cp {} "${outdir}/bitstream.bit" \; 2>/dev/null || true
   find "${wt}/demoriscv/fpga" -name "*utilization*.rpt" -exec cp {} "${outdir}/utilization.rpt" \; 2>/dev/null || true
   find "${wt}/demoriscv/fpga" -name "*timing*.rpt" -exec cp {} "${outdir}/timing.rpt" \; 2>/dev/null || true
