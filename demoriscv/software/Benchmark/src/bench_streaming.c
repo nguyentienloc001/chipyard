@@ -23,8 +23,8 @@ static unsigned long consume_all(int hart_id) {
     volatile int32_t sink = 0;
     unsigned long start = get_cycles();
     for (int c = 0; c < NUM_CHUNKS; c++) {
-        while (chunk_ready[c] == 0)
-            __asm__ volatile ("fence" ::: "memory");
+        while (chunk_ready[c] == 0) { /* spin */ }
+        __asm__ volatile ("fence" ::: "memory");  /* acquire: ensure stream_buf reads follow chunk_ready observation */
         int base = c * CHUNK_WORDS;
         for (int i = 0; i < CHUNK_WORDS; i++)
             sink += stream_buf[base + i];
