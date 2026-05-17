@@ -81,9 +81,9 @@ jobs:
       - name: Fix git ownership
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - name: Init submodules (DRAMSim2 + nvdla)
+      - name: Init submodules
         run: |
-          git submodule update --init --depth=1 tools/DRAMSim2 generators/nvdla
+          git submodule update --init --depth=1 generators/ tools/
 
       - name: Download build artifacts
         uses: actions/download-artifact@v5
