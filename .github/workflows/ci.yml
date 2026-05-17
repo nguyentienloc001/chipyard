@@ -83,7 +83,7 @@ jobs:
 
       - name: Init submodules (DRAMSim2)
         run: |
-          git submodule update --init --depth=1 tools/DRAMSim2
+          git submodule update --init --depth=1 generators/ tools/ sims/firesim
 
       - name: Download build artifacts
         uses: actions/download-artifact@v5
