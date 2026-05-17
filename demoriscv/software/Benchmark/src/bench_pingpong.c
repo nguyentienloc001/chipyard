@@ -12,6 +12,11 @@
  * Also tests concurrent pairs: (0<->1) and (2<->3) simultaneously.
  *
  * Measurement via mcycle CSR.
+ *
+ * NOC note: secondary cores are woken ONCE via IPI (CLINT/PBUS), then all
+ * subsequent test coordination uses shared memory (SBUS) only.  Repeated
+ * IPIs during coherence-heavy pingpong traffic deadlock constellation NOC
+ * configs because simultaneous PBUS + SBUS traffic exhausts virtual channels.
  */
 
 #include "bench_common.h"
@@ -31,69 +36,78 @@ static volatile int flag02 __attribute__((aligned(64))) = 0;
 static volatile int flag03 __attribute__((aligned(64))) = 0;
 static volatile int flag23 __attribute__((aligned(64))) = 0;
 
-/* Which test is running */
-static volatile int test_id = 0;
+/*
+ * Test sequencer: core 0 writes 1-4 to start each test, secondary cores
+ * spin-wait on this value.  Always increases monotonically so no reset
+ * needed — secondary cores spin on (test_id != expected_tid).
+ */
+static volatile int test_id __attribute__((aligned(64))) = 0;
 
-/* Results */
-static volatile unsigned long pp_result_0 = 0;
-static volatile unsigned long pp_result_2 = 0;
+/* Results written by secondary cores */
+static volatile unsigned long pp_result_2 __attribute__((aligned(64))) = 0;
 
-/* Spin-wait with fence to reduce coherence traffic */
-static inline void spin_wait(volatile int *flag, int expect) {
-    while (*flag != expect) {
+static inline void spin_wait_eq(volatile int *p, int expect) {
+    while (*p != expect)
         __asm__ volatile ("fence" ::: "memory");
-    }
 }
 
-/* Single-pair ping-pong: core 0 is initiator, target_hart is responder */
 static unsigned long pingpong_initiator(volatile int *flag, int total) {
     unsigned long start = get_cycles();
     for (int i = 0; i < total; i++) {
-        *flag = 1;                      /* ping */
+        *flag = 1;
         __asm__ volatile ("fence" ::: "memory");
-        spin_wait(flag, 2);             /* wait for pong */
-        *flag = 0;                      /* reset */
+        spin_wait_eq(flag, 2);
+        *flag = 0;
         __asm__ volatile ("fence" ::: "memory");
     }
-    unsigned long end = get_cycles();
-    return end - start;
+    return get_cycles() - start;
 }
 
 static void pingpong_responder(volatile int *flag, int total) {
     for (int i = 0; i < total; i++) {
-        spin_wait(flag, 1);             /* wait for ping */
-        *flag = 2;                      /* pong */
+        spin_wait_eq(flag, 1);
+        *flag = 2;
         __asm__ volatile ("fence" ::: "memory");
-        spin_wait(flag, 0);             /* wait for reset */
+        spin_wait_eq(flag, 0);
     }
 }
 
 void handle_msi(void);
 
+/*
+ * Secondary hart loop — entered once via IPI, runs all 4 tests via
+ * shared-memory signaling, then exits back to the WFI loop in __main.
+ */
 void handle_msi(void) {
     uint32_t hart = read_csr(mhartid);
 
-    switch (test_id) {
-    case 1: /* Core 0 <-> Core 1 */
-        if (hart == 1) pingpong_responder(&flag01, TOTAL_ITERS);
-        break;
-    case 2: /* Core 0 <-> Core 2 */
-        if (hart == 2) pingpong_responder(&flag02, TOTAL_ITERS);
-        break;
-    case 3: /* Core 0 <-> Core 3 */
-        if (hart == 3) pingpong_responder(&flag03, TOTAL_ITERS);
-        break;
-    case 4: /* Concurrent: (0<->1) and (2<->3) */
-        if (hart == 1) pingpong_responder(&flag01, CONC_TOTAL);
-        if (hart == 2) {
-            /* Core 2 is initiator for pair 2<->3 */
-            pp_result_2 = pingpong_initiator(&flag23, CONC_TOTAL);
+    barrier(N_CORES);   /* sync: all harts active before core 0 starts */
+
+    for (int tid = 1; tid <= 4; tid++) {
+        /* Wait for core 0 to set test_id to this test */
+        spin_wait_eq((volatile int *)&test_id, tid);
+
+        switch (tid) {
+        case 1:
+            if (hart == 1) pingpong_responder(&flag01, TOTAL_ITERS);
+            break;
+        case 2:
+            if (hart == 2) pingpong_responder(&flag02, TOTAL_ITERS);
+            break;
+        case 3:
+            if (hart == 3) pingpong_responder(&flag03, TOTAL_ITERS);
+            break;
+        case 4:
+            if (hart == 1) pingpong_responder(&flag01, CONC_TOTAL);
+            if (hart == 2) pp_result_2 = pingpong_initiator(&flag23, CONC_TOTAL);
+            if (hart == 3) pingpong_responder(&flag23, CONC_TOTAL);
+            break;
         }
-        if (hart == 3) pingpong_responder(&flag23, CONC_TOTAL);
-        break;
+
+        barrier(N_CORES);   /* sync: test complete */
     }
 
-    barrier(N_CORES);
+    barrier(N_CORES);   /* final sync before returning to WFI */
 }
 
 static void print_result(const char *label, unsigned long total_cycles, int iters) {
@@ -111,40 +125,43 @@ int main(void) {
 
     kprintf("\r\n===== Benchmark 4: Inter-core Ping-Pong Latency =====\r\n");
 
-    /* Test 1: Core 0 <-> Core 1 */
-    test_id = 1;
-    flag01 = 0;
+    /* Wake secondary cores ONCE — all further coordination via shared memory */
     wake_harts(N_CORES - 1);
+    barrier(N_CORES);   /* wait until all harts are in handle_msi */
+
+    /* Test 1: Core 0 <-> Core 1 */
+    flag01 = 0;
+    __asm__ volatile ("fence" ::: "memory");
+    test_id = 1;
     unsigned long t1_total = pingpong_initiator(&flag01, TOTAL_ITERS);
     barrier(N_CORES);
-    /* Subtract warmup: approximate by ratio */
     unsigned long t1 = t1_total * ITERATIONS / TOTAL_ITERS;
     print_result("Core 0 <-> Core 1 (1 hop)", t1, ITERATIONS);
 
     /* Test 2: Core 0 <-> Core 2 */
-    test_id = 2;
     flag02 = 0;
-    wake_harts(N_CORES - 1);
+    __asm__ volatile ("fence" ::: "memory");
+    test_id = 2;
     unsigned long t2_total = pingpong_initiator(&flag02, TOTAL_ITERS);
     barrier(N_CORES);
     unsigned long t2 = t2_total * ITERATIONS / TOTAL_ITERS;
     print_result("Core 0 <-> Core 2 (2 hops)", t2, ITERATIONS);
 
     /* Test 3: Core 0 <-> Core 3 */
-    test_id = 3;
     flag03 = 0;
-    wake_harts(N_CORES - 1);
+    __asm__ volatile ("fence" ::: "memory");
+    test_id = 3;
     unsigned long t3_total = pingpong_initiator(&flag03, TOTAL_ITERS);
     barrier(N_CORES);
     unsigned long t3 = t3_total * ITERATIONS / TOTAL_ITERS;
     print_result("Core 0 <-> Core 3 (3 hops)", t3, ITERATIONS);
 
-    /* Test 4: Concurrent pairs (0<->1) + (2<->3) */
-    test_id = 4;
+    /* Test 4: Concurrent (0<->1) + (2<->3) */
     flag01 = 0;
     flag23 = 0;
     pp_result_2 = 0;
-    wake_harts(N_CORES - 1);
+    __asm__ volatile ("fence" ::: "memory");
+    test_id = 4;
     unsigned long t4_total = pingpong_initiator(&flag01, CONC_TOTAL);
     barrier(N_CORES);
     unsigned long t4_0 = t4_total * CONC_ITERATIONS / CONC_TOTAL;
@@ -152,6 +169,8 @@ int main(void) {
     kprintf("  Concurrent pairs:\r\n");
     print_result("    Pair 0<->1", t4_0, CONC_ITERATIONS);
     print_result("    Pair 2<->3", t4_2, CONC_ITERATIONS);
+
+    barrier(N_CORES);   /* final sync — secondary cores exit handle_msi */
 
     kprintf("===== End Benchmark 4 =====\r\n");
     return 0;
