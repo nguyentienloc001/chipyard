@@ -131,7 +131,7 @@ class QuadCoreMesh extends Config(
       channelParamGen = (a, b) => UserChannelParams(Seq.fill(10) {UserVirtualChannelParams(4) }),
       routingRelation = NonblockingVirtualSubnetworksRouting(Mesh2DDimensionOrderedRouting(), 5, 2))
   )) ++
-  new CustomSoC ++
+  new ThesisSoC ++
   new chipyard.config.AbstractConfig
 )
 // DOC include end: QuadCoreMesh
