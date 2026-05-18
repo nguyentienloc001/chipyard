@@ -48,21 +48,32 @@ static inline void wake_harts(int n) {
 }
 
 /*
+ * Optional no-IPI secondary entry point.
+ * If a benchmark defines __secondary_entry(), __main calls it directly
+ * without enabling MSI or using WFI.  This eliminates all PBUS (CLINT)
+ * traffic at startup, which is required for constellation NOC configs:
+ * simultaneous PBUS (MSIP clear in handle_trap) + SBUS (barrier AMO)
+ * exhausts NOC virtual channels and deadlocks the simulation.
+ */
+extern void __secondary_entry(uint32_t hart) __attribute__((weak));
+
+/*
  * Secondary hart entry point.
  * crt0 calls main() on hart 0 and __main() on harts 1-3.
- * Secondary harts enable MSI interrupt and wait in WFI loop.
- * When hart 0 writes CLINT MSIP, secondary harts trap into
- * handle_trap() -> handle_msi() defined in each benchmark.
  */
 void __main(void) {
-    uint32_t mhartid = read_csr(mhartid);
-    if (mhartid >= N_CORES) while (1);
+    uint32_t hart = read_csr(mhartid);
+    if (hart >= N_CORES) while (1);
 
-    /* Enable machine software interrupt */
+    /* No-IPI path: benchmark registered a direct entry point */
+    if ((uintptr_t)__secondary_entry != 0) {
+        __secondary_entry(hart);
+        return;
+    }
+
+    /* Default IPI/WFI path for benchmarks that use wake_harts() */
     write_csr(mie, read_csr(mie) | MIP_MSIP);
-    /* Enable global machine interrupt */
     write_csr(mstatus, read_csr(mstatus) | MSTATUS_MIE);
-
     while (1) {
         __asm__ volatile ("wfi");
     }

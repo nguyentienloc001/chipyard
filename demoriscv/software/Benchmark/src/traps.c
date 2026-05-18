@@ -6,7 +6,10 @@
 #define SOFT_INTERRUPT_TRAP 0x8000000000000003 // software interrupt trap
 
 void _exit(int) __attribute__ ((noreturn));
-void handle_msi();
+/* Weak default: benchmarks that use IPI override with a strong definition.
+ * Benchmarks using __secondary_entry (no-IPI path) leave this as a no-op. */
+void handle_msi(void) __attribute__((weak));
+void handle_msi(void) {}
 
 uintptr_t handle_trap(uintptr_t epc, uintptr_t cause, uintptr_t tval, uintptr_t regs[32]) {
   if (cause == SOFT_INTERRUPT_TRAP) {
