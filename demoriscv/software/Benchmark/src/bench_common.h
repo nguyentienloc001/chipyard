@@ -65,10 +65,12 @@ void __main(void) {
     uint32_t hart = read_csr(mhartid);
     if (hart >= N_CORES) while (1);
 
-    /* No-IPI path: benchmark registered a direct entry point */
+    /* No-IPI path: benchmark registered a direct entry point.
+     * Spin after return so crt0 never runs exit() on secondary harts
+     * (which can corrupt htif tohost and cause spurious exit code 4). */
     if ((uintptr_t)__secondary_entry != 0) {
         __secondary_entry(hart);
-        return;
+        while (1);
     }
 
     /* Default IPI/WFI path for benchmarks that use wake_harts() */
