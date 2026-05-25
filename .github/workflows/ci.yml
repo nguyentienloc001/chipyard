@@ -75,7 +75,7 @@ jobs:
       fail-fast: false
       matrix:
         config: [ThesisSoC, QuadCoreRing, QuadCoreMeshThesis]
-        benchmark: [bench_matmul_scale, bench_pingpong, bench_mem_latency, bench_mem_bandwidth]
+        benchmark: [bench_matmul_scale, bench_pingpong, bench_mem_latency, bench_mem_bandwidth, bench_alltoall, bench_hotspot, bench_streaming, bench_cachebounce, bench_multistream]
     steps:
       - uses: actions/checkout@v5
       - name: Fix git ownership
@@ -100,7 +100,7 @@ jobs:
           mkdir -p output/chipyard.harness.TestHarness.${{ matrix.config }}
           make SUB_PROJECT=chipyard CONFIG=${{ matrix.config }} \
             BINARY=$GITHUB_WORKSPACE/demoriscv/software/Benchmark/build/${{ matrix.benchmark }}.elf \
-            TIMEOUT_CYCLES=500000000 run-binary
+            TIMEOUT_CYCLES=1000000000 run-binary
 
       - name: Show results
         if: always()
