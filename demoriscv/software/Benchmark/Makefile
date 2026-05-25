@@ -25,7 +25,7 @@ PBUS_CLK ?= 1000000
 #################################
 # Benchmark targets
 #################################
-BENCHMARKS := bench_mem_latency bench_mem_bandwidth bench_matmul_scale bench_pingpong
+BENCHMARKS := bench_mem_latency bench_mem_bandwidth bench_matmul_scale bench_pingpong bench_alltoall
 
 # Support sources (linked with every benchmark)
 SUPPORT_SRCS := $(SRCDIR)/kprintf.c $(SRCDIR)/crt_stubs.c $(SRCDIR)/traps.c
