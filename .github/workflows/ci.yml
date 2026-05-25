@@ -75,7 +75,7 @@ jobs:
       fail-fast: false
       matrix:
         config: [SharedBusSoC, ThesisSoC, QuadCoreRing, QuadCoreMesh, QuadCoreTree]
-        benchmark: [bench_matmul_scale, bench_pingpong, bench_mem_latency, bench_mem_bandwidth]
+        benchmark: [bench_matmul_scale, bench_pingpong, bench_mem_latency, bench_mem_bandwidth, bench_cachebounce, bench_multistream]
     steps:
       - uses: actions/checkout@v5
       - name: Fix git ownership
