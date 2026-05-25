@@ -33,6 +33,8 @@ project/project/
 .java_tmp/
 tests/build/
 demoriscv/software/*/build/
+outputs/sim/
+outputs/fpga/*.bit
 
 # Vivado installation (14GB+) — built by docker/install-vivado.sh
 vivado-install/

@@ -34,15 +34,12 @@ void kprintf(const char *fmt, ...)
         if (is_format) {
             switch (c) {
             case 'l':
-                /* 'l' indicates a "long" modifier (e.g. %ld) */
                 is_long = true;
                 continue;
             case 'h':
-                /* 'h' indicates a "short" modifier (e.g. %hd) */
-                is_char = true;  /* re-using is_char to represent short */
+                is_char = true;
                 continue;
             case 'x': {
-                /* Print in hexadecimal. Existing code. */
                 unsigned long n;
                 long i;
                 if (is_long) {
@@ -59,32 +56,21 @@ void kprintf(const char *fmt, ...)
                 break;
             }
             case 'd': {
-                /*
-                 * Print signed decimal.
-                 * If 'l' was present: treat as 'long'
-                 * If 'h' was present: treat as 'short'
-                 * otherwise treat as regular 'int'.
-                 */
                 long num;
                 if (is_long) {
                     num = va_arg(vl, long);
                 } else {
-                    /* Variadic arguments of type short/char
-                     * are promoted to int, but we can cast later if needed. */
                     num = va_arg(vl, int);
                     if (is_char) {
-                        /* For %hd, cast down to short (optional). */
                         num = (short)num;
                     }
                 }
 
-                /* Handle negative sign if needed */
                 if (num < 0) {
                     kputc('-');
                     num = -num;
                 }
 
-                /* Convert number to decimal string (in reverse) */
                 char buffer[32];
                 int pos = 0;
                 do {
@@ -92,7 +78,6 @@ void kprintf(const char *fmt, ...)
                     num /= 10;
                 } while (num > 0 && pos < (int)sizeof(buffer));
 
-                /* Write out the digits in correct order */
                 while (pos > 0) {
                     kputc(buffer[--pos]);
                 }
@@ -104,9 +89,8 @@ void kprintf(const char *fmt, ...)
             case 'c':
                 kputc(va_arg(vl, int));
                 break;
-            case 'w': /* Force 32-bit hex output */
+            case 'w':
                 unsigned int n = va_arg(vl, unsigned int);
-                /* We want exactly 32 bits (8 hex digits). Start at bit 28 (the top nibble). */
                 for (int i = 28; i >= 0; i -= 4) {
                     unsigned int d = (n >> i) & 0xF;
                     kputc(d < 10 ? '0' + d : 'a' + d - 10);
@@ -114,15 +98,12 @@ void kprintf(const char *fmt, ...)
                 break;
             }
 
-            /* Reset state after handling a format specifier */
             is_format = false;
             is_long   = false;
             is_char   = false;
         } else if (c == '%') {
-            /* Next character(s) will define a format specifier */
             is_format = true;
         } else {
-            /* Normal character output */
             kputc(c);
         }
     }
