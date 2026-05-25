@@ -65,12 +65,11 @@ int main(void) {
     kprintf("  Pattern: Core 0->1->2->3->0 (ring)\r\n");
     kprintf("  %ld bytes per stream\r\n", bytes_per_stream);
 
-    wake_harts(N_CORES - 1);
-
     /* Phase A: Single stream (Core 0→1 only) — baseline */
     kprintf("\r\n  Phase A: Single stream (Core 0->1)\r\n");
     ms_phase = 1;
     __asm__ volatile ("fence" ::: "memory");
+    wake_harts(N_CORES - 1);
     /* Warmup */
     do_stream_to(0, 1);
     unsigned long single_cycles = do_stream_to(0, 1);

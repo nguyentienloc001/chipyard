@@ -86,12 +86,11 @@ int main(void) {
     kprintf("\r\n===== Benchmark: Cache-Line Bouncing =====\r\n");
     kprintf("  %d iterations per phase\r\n", BOUNCE_ITERS);
 
-    wake_harts(N_CORES - 1);
-
     /* Phase A: 1 pair (Core 0↔1) */
     kprintf("\r\n  Phase A: 1 pair (Core 0<->1)\r\n");
     bounce_phase = 1;
     __asm__ volatile ("fence" ::: "memory");
+    wake_harts(N_CORES - 1);
     bounce_cycles[0] = do_bounce(flag_pair0, 0, 1, BOUNCE_ITERS);
     barrier(N_CORES);
 
