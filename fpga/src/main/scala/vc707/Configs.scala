@@ -61,34 +61,8 @@ class RocketVC707Config extends Config (
     new chipyard.RocketConfig
 )
 
-class CustomVC707Config extends Config (
-  new WithVC707Tweaks ++
-  new chipyard.QuadCoreRing
-)
-
-class TestVC707Config extends Config (
-  new WithVC707Tweaks ++
-  new chipyard.GCDTLBlackBoxRocketConfig
-)
-
-class InternshipConfig extends Config (
-  new WithVC707Tweaks ++
-  new chipyard.cipher.WithMyTimer(address = 0x00007000) ++
-  new chipyard.cipher.WithKLEIN(address = 0x00006000) ++
-  new chipyard.config.WithBroadcastManager ++
-  new testchipip.soc.WithNoScratchpads ++
-  new freechips.rocketchip.rocket.WithNSmallCores(1) ++
-  new chipyard.config.AbstractConfig
-)
-
-class QuadCoreVC707Config extends Config (
-  new WithVC707Tweaks ++
-  new testchipip.soc.WithNoScratchpads ++
-  new freechips.rocketchip.rocket.WithNCustomCores(1, withFPU = false) ++
-  new freechips.rocketchip.rocket.WithNCustomCores(2, withFPU = true, lengthFPU = 32) ++
-  new freechips.rocketchip.rocket.WithNCustomCores(1, withFPU = true, lengthFPU = 64) ++
-  new chipyard.config.AbstractConfig
-)
+// CustomVC707Config, TestVC707Config, InternshipConfig, QuadCoreVC707Config
+// removed — reference types not present in this Chipyard version
 
 class BoomVC707Config extends Config (
   new WithFPGAFrequency(50) ++

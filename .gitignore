@@ -35,3 +35,7 @@ tests/build/
 demoriscv/software/*/build/
 outputs/sim/
 outputs/fpga/*.bit
+
+# Vivado installation (14GB+) — built by docker/install-vivado.sh
+vivado-install/
+Xilinx_Unified_2021.2_1021_0703/

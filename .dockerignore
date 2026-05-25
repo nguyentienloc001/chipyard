@@ -6,6 +6,10 @@ sims/vcs/generated-src
 sims/vcs/simulator-*
 sims/vcs/output
 
+# Ignore Vivado installer (73GB) — only the installed result (vivado-install/) is needed
+Xilinx_Unified_2021.2_1021_0703
+Xilinx_Unified_2021.2_1021_0703.tar.gz
+
 # Ignore large submodules not needed for Docker build
 sims/firesim
 software/firemarshal

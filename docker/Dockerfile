@@ -1,13 +1,15 @@
+# syntax=docker/dockerfile:1
 ##############################################################################
 # Chipyard Docker Image — Multi-Stage, Multi-Arch (amd64 + arm64)
 #
 # Stage 1 (toolchain): Build RISC-V GNU toolchain from source
 # Stage 2 (builder):   Build Verilator, firtool, Spike, pk, tests, DRAMSim2
-# Stage 3 (final):     Minimal runtime with pre-built artifacts
+# Stage 3 (final):     Minimal runtime with pre-built artifacts + Vivado
+#
+# Pre-requisite: run docker/install-vivado.sh to install Vivado to vivado-install/
 #
 # Build:
-#   docker buildx build --platform linux/arm64 -t locnguyen96/chipyard-dev .
-#   docker buildx build --platform linux/amd64,linux/arm64 -t locnguyen96/chipyard-dev .
+#   docker buildx build --platform linux/amd64 -t locnguyen96/chipyard-dev .
 ##############################################################################
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -76,7 +78,7 @@ ENV PATH="$RISCV/bin:$PATH"
 # ── 1. Verilator 5.022 ───────────────────────────────────────────────────
 ARG VERILATOR_VERSION=5.022
 RUN cd /tmp && \
-    curl -fsSL "https://github.com/verilator/verilator/archive/refs/tags/v${VERILATOR_VERSION}.tar.gz" \
+    curl -fsSL "https://github.com/verilator/verilator/archive/v${VERILATOR_VERSION}.tar.gz" \
         | tar xz && \
     cd verilator-${VERILATOR_VERSION} && \
     autoconf && \
@@ -200,13 +202,18 @@ RUN strip --strip-debug $RISCV/bin/spike 2>/dev/null || true && \
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Stage 3: Final — minimal runtime, no build tools
+#
+# Vivado pre-requisite: run docker/install-vivado.sh BEFORE building.
+# That script installs Vivado to vivado-install/ on the host.  Only the
+# ~15 GB installed result is COPYed here — the 72 GB installer tarball
+# never enters the Docker build context.
 # ═══════════════════════════════════════════════════════════════════════════
 FROM ubuntu:22.04 AS final
 
 ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"]
 
-# Runtime dependencies only
+# Runtime dependencies (includes Vivado runtime libs)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     gcc g++ \
@@ -220,6 +227,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     perl make \
     default-jdk \
     jq \
+    locales libncurses5 libtinfo5 \
+    libx11-6 libxext6 libxrender1 libxtst6 libxi6 \
+    libfreetype6 fontconfig \
+    && locale-gen en_US.UTF-8 \
     && rm -rf /var/lib/apt/lists/*
 
 # sbt (Scala Build Tool)
@@ -234,8 +245,21 @@ COPY --from=builder /opt/riscv /opt/riscv
 COPY --from=builder /opt/verilator /opt/verilator
 COPY --from=builder /opt/firtool /opt/firtool
 
-ENV PATH="$RISCV/bin:/opt/verilator/bin:/opt/firtool/bin:/usr/local/bin:$PATH"
+# Copy pre-installed Vivado (run docker/install-vivado.sh first to populate vivado-install/)
+COPY vivado-install/ /opt/Xilinx/
+
+ENV XILINX_VIVADO=/opt/Xilinx/Vivado/2021.2
+ENV PATH="$RISCV/bin:/opt/verilator/bin:/opt/firtool/bin:${XILINX_VIVADO}/bin:/usr/local/bin:$PATH"
 ENV LD_LIBRARY_PATH="$RISCV/lib:/opt/firtool/lib"
+# License: provide at runtime via -e XILINXD_LICENSE_FILE=<port>@<host>
+
+# libudev stub — replaces Ubuntu 22.04 libudev.so.1 which crashes when called
+# from Vivado 2021.2's FLEXlm license manager (realloc invalid pointer / SIGABRT).
+# Must be done AFTER all apt-get installs since apt/curl depend on the real libudev.
+COPY docker/libudev_stub.c /tmp/libudev_stub.c
+RUN gcc -shared -fPIC -Wl,-soname,libudev.so.1 \
+        -o /lib/x86_64-linux-gnu/libudev.so.1.7.2 /tmp/libudev_stub.c && \
+    rm /tmp/libudev_stub.c
 
 # Verify tools are working
 RUN firtool --version && verilator --version && spike --help 2>&1 | head -1
@@ -244,7 +268,8 @@ RUN firtool --version && verilator --version && spike --help 2>&1 | head -1
 RUN printf '%s\n' \
     '#!/bin/bash' \
     'export RISCV=/opt/riscv' \
-    'export PATH=$RISCV/bin:/opt/verilator/bin:/opt/firtool/bin:/usr/local/bin:$PATH' \
+    'export XILINX_VIVADO=/opt/Xilinx/Vivado/2021.2' \
+    'export PATH=$RISCV/bin:/opt/verilator/bin:/opt/firtool/bin:${XILINX_VIVADO}/bin:/usr/local/bin:$PATH' \
     'export LD_LIBRARY_PATH=$RISCV/lib:/opt/firtool/lib:${LD_LIBRARY_PATH:-}' \
     'export JAVA_HEAP_SIZE=${JAVA_HEAP_SIZE:-8G}' \
     'export JAVA_TOOL_OPTIONS="-Xmx${JAVA_HEAP_SIZE} -Xss8M -Djava.io.tmpdir=/tmp"' \
@@ -255,6 +280,7 @@ RUN printf '%s\n' \
     'command -v firtool >/dev/null && echo "[OK] firtool $(firtool --version 2>&1 | head -1)" || echo "[MISSING] firtool"' \
     'command -v sbt >/dev/null && echo "[OK] sbt" || echo "[MISSING] sbt"' \
     'command -v spike >/dev/null && echo "[OK] spike" || echo "[MISSING] spike"' \
+    'command -v vivado >/dev/null && echo "[OK] vivado $(vivado -version 2>&1 | head -1)" || echo "[MISSING] vivado"' \
     'echo "[OK] RISCV=$RISCV"' \
     > /opt/chipyard-env.sh && \
     chmod +x /opt/chipyard-env.sh && \
@@ -264,7 +290,7 @@ RUN printf '%s\n' \
 ARG BUILD_DATE
 ARG VCS_REF
 LABEL org.opencontainers.image.title="chipyard-dev" \
-      org.opencontainers.image.description="Chipyard RISC-V SoC development environment (multi-arch)" \
+      org.opencontainers.image.description="Chipyard RISC-V SoC development environment with Vivado 2021.2" \
       org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.revision="${VCS_REF}" \
       org.opencontainers.image.source="https://github.com/nguyentienloc001/chipyard"
