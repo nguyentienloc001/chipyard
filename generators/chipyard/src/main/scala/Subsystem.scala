@@ -77,6 +77,7 @@ class ChipyardSubsystem(implicit p: Parameters) extends BaseSubsystem
     with HasHierarchicalElements
     with CanHaveHTIF
     with CanHaveChosenInDTS
+    with chipyard.example.CanHaveBusUtilMonitor
 {
   def coreMonitorBundles = totalTiles.values.map {
     case r: RocketTile => r.module.core.rocketImpl.coreMonitorBundle
