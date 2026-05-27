@@ -50,6 +50,7 @@ class CustomSoC extends Config(
 )
 
 class ThesisSoC extends Config(
+  new chipyard.example.WithBusUtilMonitor ++
   new freechips.rocketchip.subsystem.WithoutTLMonitors ++
   new chipyard.config.WithUART(address = 0x64000000) ++
   new chipyard.config.WithNoUART ++
